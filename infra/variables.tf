@@ -97,7 +97,7 @@ variable "app_repo_url" {
 variable "app_repo_branch" {
   description = "Repository branch to deploy."
   type        = string
-  default     = "main"
+  default     = "master"
 }
 
 variable "app_repo_clone_path" {
@@ -133,7 +133,7 @@ variable "github_repository" {
 variable "github_branch" {
   description = "GitHub branch allowed to assume the deploy role."
   type        = string
-  default     = "main"
+  default     = "master"
 }
 
 variable "github_oidc_provider_arn" {
@@ -200,4 +200,10 @@ variable "budget_notification_emails" {
   description = "Email addresses for budget SNS topic subscriptions."
   type        = list(string)
   default     = []
+}
+
+variable "ssh_public_key" {
+  description = "Optional SSH public key material. Empty skips key pair creation."
+  type        = string
+  default     = ""
 }

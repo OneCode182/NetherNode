@@ -82,12 +82,19 @@ resource "aws_iam_instance_profile" "ssm" {
   role = aws_iam_role.ssm.name
 }
 
+resource "aws_key_pair" "app" {
+  count      = var.ssh_public_key != "" ? 1 : 0
+  key_name   = "${var.project_name}-${var.environment}-key"
+  public_key = var.ssh_public_key
+}
+
 resource "aws_instance" "app" {
   ami                    = local.effective_ami_id
   instance_type          = var.instance_type
   subnet_id              = local.effective_subnet_id
   vpc_security_group_ids = [aws_security_group.minecraft.id]
   iam_instance_profile   = aws_iam_instance_profile.ssm.name
+  key_name               = var.ssh_public_key != "" ? aws_key_pair.app[0].key_name : null
 
   associate_public_ip_address = var.associate_public_ip_address
 
@@ -125,7 +132,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = []
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1", "1c58a3a8518e8759bf075b76b750d4f2df264fcd"]
 }
 
 resource "aws_iam_role" "github_actions" {

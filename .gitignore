@@ -16,3 +16,6 @@ graphify-staging/
 infra/.terraform/
 *.log
 .DS_Store
+infra/*.tfvars
+infra/terraform.tfstate*
+infra/tfplan
