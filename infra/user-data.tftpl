@@ -48,6 +48,8 @@ if [ -n "${app_repo_url}" ]; then
     echo "start_server_on_boot=false. Use GitHub Actions start-server workflow when ready to play."
   elif [ "${minecraft_eula}" != "TRUE" ]; then
     echo "Minecraft EULA not accepted. Set minecraft_eula_accepted=true before starting compose."
+  elif [ -f "ops/start.sh" ]; then
+    bash ops/start.sh
   elif [ -f "${compose_relative_path}" ]; then
     $COMPOSE_CMD -f "${compose_relative_path}" pull
     $COMPOSE_CMD -f "${compose_relative_path}" up -d

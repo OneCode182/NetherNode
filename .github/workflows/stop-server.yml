@@ -56,7 +56,7 @@ jobs:
             "commands": [
               "set -euo pipefail",
               "APP_DIR=/opt/nethernode/app",
-              "if [ -d \"$APP_DIR\" ]; then cd \"$APP_DIR\"; BACKUP_SOURCE=/opt/nethernode/data/minecraft BACKUP_DEST=/opt/nethernode/backups bash ops/backup.sh || true; COMPOSE_FILE=\"$APP_DIR/compose.yaml\" bash ops/stop-safe.sh || true; fi"
+              "if [ -d \"$APP_DIR\" ]; then cd \"$APP_DIR\"; BACKUP_SOURCE=/opt/nethernode/data/minecraft BACKUP_DEST=/opt/nethernode/backups COMPOSE_FILE=\"$APP_DIR/compose.yaml\" bash ops/stop-safe.sh || true; fi"
             ]
           }
           JSON
