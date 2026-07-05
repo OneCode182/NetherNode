@@ -20,3 +20,10 @@
 - Decision: Use GHCR + one stoppable EC2 + Docker Compose; avoid ECS, Fargate, NLB, EFS, ECR, and Elastic IP for MVP.
 - Rationale: Fewer AWS services lowers fixed cost and keeps later Azure migration simple.
 - Consequence: GitHub workflows publish images and control EC2 through OIDC + SSM; EC2 runs only during play sessions.
+
+## 2026-07-05 - c7i-flex.large under AWS Free Plan constraint
+
+- Context: Account is AWS Free Plan (USD 90 credits); EC2 restricted to free-tier-eligible types. `t4g.medium` rejected at RunInstances (InvalidParameterCombination).
+- Decision: Use `c7i-flex.large` (x86_64, 4 GiB) with x86_64 AL2023 AMI via new `ami_architecture` variable; keep repo default `t4g.small`/arm64. Reuse pre-existing account GitHub OIDC provider via `github_oidc_provider_arn` tfvar.
+- Rationale: 4 GiB matches original t4g.medium intent; GHCR image is currently amd64-only, so x86 avoids a multi-arch rebuild. ~USD 0.085/h, within credits.
+- Consequence: Higher hourly cost than Graviton; revisit t4g after account upgrade + multi-arch image build.

@@ -46,6 +46,12 @@ variable "ami_id" {
   default     = ""
 }
 
+variable "ami_architecture" {
+  description = "AMI architecture for discovery. Must match instance_type family (arm64 for t4g/Graviton, x86_64 for t3/c7i-flex/m7i-flex)."
+  type        = string
+  default     = "arm64"
+}
+
 variable "associate_public_ip_address" {
   description = "Enable public IPv4 on the instance."
   type        = bool
