@@ -1,0 +1,6 @@
+server.jar
+*.jar
+data/
+backups/
+node_modules/
+*.log

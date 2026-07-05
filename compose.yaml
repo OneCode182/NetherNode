@@ -1,0 +1,35 @@
+services:
+  minecraft:
+    image: "${MINECRAFT_IMAGE:-itzg/minecraft-server:stable-java25}"
+    container_name: "${COMPOSE_PROJECT_NAME:-nethernode}-minecraft"
+    env_file:
+      - .env
+    environment:
+      EULA: "${MINECRAFT_EULA}"
+      TYPE: "${MINECRAFT_TYPE}"
+      VERSION: "${MINECRAFT_VERSION}"
+      MEMORY: "${MINECRAFT_MEMORY}"
+      MAX_PLAYERS: "${MINECRAFT_MAX_PLAYERS}"
+      DIFFICULTY: "${MINECRAFT_DIFFICULTY}"
+      VIEW_DISTANCE: "${MINECRAFT_VIEW_DISTANCE}"
+      SIMULATION_DISTANCE: "${MINECRAFT_SIMULATION_DISTANCE}"
+      LEVEL_TYPE: "${MINECRAFT_LEVEL}"
+      SEED: "${MINECRAFT_SEED}"
+      SERVER_NAME: "${MINECRAFT_SERVER_NAME}"
+      MOTD: "${MINECRAFT_MOTD}"
+      JVM_XX_OPTS: "${MINECRAFT_JVM_OPTS}"
+      ONLINE_MODE: "${MINECRAFT_ONLINE_MODE}"
+      ENABLE_RCON: "${MINECRAFT_ENABLE_RCON}"
+      RCON_PASSWORD: "${MINECRAFT_RCON_PASSWORD}"
+      RCON_PORT: "${MINECRAFT_RCON_PORT}"
+      MODRINTH_PROJECTS: "${MINECRAFT_MODRINTH_PROJECTS}"
+      MODRINTH_ALLOWED_VERSION_TYPE: "${MINECRAFT_MODRINTH_ALLOWED_VERSION_TYPE}"
+      UID: 1000
+      GID: 1000
+    volumes:
+      - "${MINECRAFT_DATA_DIR:-./data/minecraft}:/data"
+    ports:
+      - "${MINECRAFT_BIND_ADDR:-0.0.0.0}:${MINECRAFT_PORT:-25565}:25565"
+      - "${MINECRAFT_BIND_ADDR:-0.0.0.0}:${MINECRAFT_BEDROCK_PORT:-19132}:19132/udp"
+    restart: unless-stopped
+    tty: true
