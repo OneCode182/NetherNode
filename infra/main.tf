@@ -25,7 +25,7 @@ data "aws_ami" "al2023" {
 
   filter {
     name   = "architecture"
-    values = ["arm64"]
+    values = [var.ami_architecture]
   }
 
   filter {
