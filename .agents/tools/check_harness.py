@@ -33,6 +33,7 @@ REQUIRED_FILES = (
     ".agents/protocols/decision-log.protocol.md",
     ".agents/protocols/atomic-commit.protocol.md",
     ".agents/prompts/_.index.md",
+    ".agents/prompts/aws-bootstrap-deploy.prompt.md",
     ".agents/prompts/nethernode-quality-audit.prompt.md",
     ".agents/project/_.index.md",
     ".agents/project/product-brief.md",
