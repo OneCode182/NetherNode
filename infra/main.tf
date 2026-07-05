@@ -247,7 +247,7 @@ data "aws_iam_policy_document" "github_actions_control" {
     actions = ["ssm:SendCommand"]
     resources = [
       aws_instance.app.arn,
-      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/AWS-RunShellScript",
+      "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
     ]
   }
 }
