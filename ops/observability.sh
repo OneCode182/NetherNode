@@ -5,6 +5,8 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 DRY_RUN="false"
 COMPOSE_FILE="${COMPOSE_FILE:-${PROJECT_ROOT}/compose.yaml}"
+DATA_DIR="${MINECRAFT_DATA_DIR:-${PROJECT_ROOT}/data/minecraft}"
+BACKUP_DIR="${BACKUP_DEST:-${PROJECT_ROOT}/backups}"
 
 print_help() {
   cat <<'EOF'
@@ -56,15 +58,27 @@ else
 fi
 
 if [[ "${DRY_RUN}" == "true" ]]; then
-  echo "[DRY-RUN] du -sh ./data/minecraft ./backups"
+  echo "[DRY-RUN] du -sh ${DATA_DIR} ${BACKUP_DIR}"
+  echo "[DRY-RUN] df -h ${DATA_DIR}"
+  echo "[DRY-RUN] backup count + sizes in ${BACKUP_DIR}"
   exit 0
 fi
 
 if command -v du >/dev/null 2>&1; then
-  du -sh ./data/minecraft ./backups 2>/dev/null || true
+  du -sh "${DATA_DIR}" "${BACKUP_DIR}" 2>/dev/null || true
 fi
 
-if command -v ls >/dev/null 2>&1; then
-  echo "--- Recent backups ---"
-  ls -1t ./backups/*.tar.gz 2>/dev/null | head -n 5 || echo "No backups yet"
+echo "--- Disk free (target: >20% free) ---"
+df -h "${DATA_DIR}" 2>/dev/null || df -h "${PROJECT_ROOT}" || true
+
+echo "--- Backups ---"
+backup_count=0
+if [[ -d "${BACKUP_DIR}" ]]; then
+  backup_count="$(find "${BACKUP_DIR}" -maxdepth 1 -name '*.tar.gz' | wc -l | tr -d ' ')"
+fi
+echo "Archive count: ${backup_count}"
+if [[ "${backup_count}" -gt 0 ]]; then
+  find "${BACKUP_DIR}" -maxdepth 1 -name '*.tar.gz' -exec ls -1t {} + | head -n 5 | xargs -r du -h
+else
+  echo "No backups yet"
 fi
