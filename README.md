@@ -84,8 +84,11 @@ No `terraform apply` in this workflow without explicit human approval.
 
 ## GitHub CI/CD
 
-CI validates compose, scripts, Docker build, and Terraform. On push to `main`,
-`.github/workflows/image.yml` publishes the Minecraft image to GHCR.
+Validation is split by path filters: `ci.yml` validates compose and scripts on
+every push/PR; `image.yml` validates the Docker build when `server/` or compose
+files change; `infra-validate.yml` validates Terraform when `infra/` changes.
+On push to `main`, `.github/workflows/image.yml` publishes the Minecraft image
+to GHCR.
 
 Manual cloud controls:
 
@@ -111,6 +114,9 @@ tokens on the instance.
 
 ## Cost Model
 
+Target: under USD 30 over 6 months (hard ceiling USD 50) against USD 90 AWS
+credits. The USD 8.33/month budget alarm derives from the ceiling.
+
 The design avoids ECS, Fargate, NLB, EFS, ECR, and Elastic IP for the MVP.
 Costs are dominated by running EC2 hours, public IPv4 hours while running, and
 small gp3 storage.
@@ -130,8 +136,19 @@ Scripts:
 - `ops/stop-safe.sh`: RCON save + backup + stop + compose down.
 - `ops/backup.sh`: RCON save + tar backup + retention.
 - `ops/restore.sh`: restore archive into world dir.
-- `ops/observability.sh`: local status/metrics checks.
+- `ops/observability.sh`: local status/metrics checks (container, RCON players,
+  stats, disk free vs the >20% target, backup count/sizes).
 - `ops/dns-update.sh`: DuckDNS update with token redaction in dry-run.
+
+Manual checks without a script:
+
+- Latency (target: p95 under 130 ms from Cota/Bogota): each player runs
+  `ping -c 20 <duckdns-domain>` while the server is up and reports p95/max.
+- TPS/MSPT (targets: TPS ~20, MSPT p95 under 35 ms): not automated yet; add a
+  profiling mod (e.g. `spark` via `MINECRAFT_MODRINTH_PROJECTS`) and query it
+  over RCON when tuning is needed.
+- CPU p95 (target: under 70%): use the CloudWatch console `CPUUtilization`
+  metric for the instance (basic 5-minute EC2 metrics, no extra infra).
 
 ## Azure Migration Note
 
