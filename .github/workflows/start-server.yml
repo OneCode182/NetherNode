@@ -10,7 +10,7 @@ on:
       repo_branch:
         description: "Repository branch to pull on EC2."
         required: true
-        default: "main"
+        default: "master"
 
 concurrency:
   group: nethernode-server-lifecycle

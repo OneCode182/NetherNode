@@ -9,7 +9,7 @@ on:
       - ".github/workflows/image.yml"
   push:
     branches:
-      - main
+      - master
     paths:
       - "server/**"
       - "compose.yaml"
@@ -36,7 +36,7 @@ jobs:
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "name=${image}" >> "$GITHUB_OUTPUT"
-          echo "push=${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}" >> "$GITHUB_OUTPUT"
+          echo "push=${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/master' }}" >> "$GITHUB_OUTPUT"
 
       - name: Load runtime version
         id: runtime
