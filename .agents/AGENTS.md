@@ -32,6 +32,7 @@
 | `agents/` | Agent role specs. |
 | `workflows/` | Session and step lifecycle. |
 | `protocols/` | Verification, context, quality, commits. |
+| `prompts/` | Reusable prompt contracts for audits and agent handoffs. |
 | `project/` | Product truth. |
 | `architecture/` | Runtime, AWS, observability design. |
 | `knowledge/` | Graphify ops and corpus plan. |
@@ -48,9 +49,12 @@
 | Question | Start |
 |---|---|
 | Product goal or scope | `project/product-brief.md` |
+| Claude Code orchestration | `workflows/dynamic-workflows-claude-code.workflow.md` |
+| Codex orchestration | `workflows/dynamic-workflows-codex.workflow.md` |
 | AWS choice or cost/latency | `architecture/aws-options.architecture.md` |
 | Minecraft/Fabric/runtime | `architecture/minecraft-runtime.architecture.md` |
 | Metrics/alerts/backups | `architecture/observability.architecture.md` |
+| Full quality audit | `prompts/nethernode-quality-audit.prompt.md` |
 | Code relationship | `knowledge/graphify-operations.md`, then smallest graph shard |
 
 Graphify is navigation only. If Graphify conflicts with Markdown, trust Markdown and log the conflict.
