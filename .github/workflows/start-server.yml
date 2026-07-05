@@ -93,6 +93,7 @@ jobs:
               "sudo chown -R ec2-user:ec2-user /opt/nethernode",
               "export HOME=/root",
               "sudo git config --system --add safe.directory \"$APP_DIR\"",
+              "docker compose version >/dev/null 2>&1 || { sudo mkdir -p /usr/local/lib/docker/cli-plugins && sudo curl -fsSL \"https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)\" -o /usr/local/lib/docker/cli-plugins/docker-compose && sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose; }",
               f"if [ ! -d \"$APP_DIR/.git\" ]; then git clone --branch {branch} {repo_url} \"$APP_DIR\"; fi",
               "cd \"$APP_DIR\"",
               "git fetch origin",
