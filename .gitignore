@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+node_modules/
+data/
+backups/
+tmp/
+graphify-staging/
+.agents/graphify-builds/*/graphify-out/
+.agents/graphify-out/*
+!.agents/graphify-out/_.index.md
+*.log
+.DS_Store
