@@ -4,9 +4,8 @@ MAKEFLAGS += --no-print-directory
 COMPOSE_FILE ?= compose.yaml
 ENV_FILE ?= .env
 ENV_EXAMPLE ?= .env.example
-WORKER_URL ?= http://127.0.0.1:8080
 
-.PHONY: help env up down stop-safe restart logs status worker-shell minecraft-shell backup backup-dry-run restore restore-dry-run observability dns-update dns-update-dry-run validate bootstrap
+.PHONY: help env up down stop-safe restart logs status minecraft-shell backup backup-dry-run restore restore-dry-run observability dns-update dns-update-dry-run validate bootstrap
 
 help:
 	@echo "NetherNode runtime tasks"
@@ -31,7 +30,7 @@ env:
 	fi
 
 bootstrap: env
-	@mkdir -p data/minecraft data/workflows/inbox data/workflows/processed data/workflows/failed ops/observability
+	@mkdir -p data/minecraft ops/observability
 	@mkdir -p backups
 
 up: bootstrap env
@@ -50,9 +49,6 @@ status:
 
 logs:
 	@docker compose -f "$(COMPOSE_FILE)" logs -f
-
-worker-shell:
-	@docker compose -f "$(COMPOSE_FILE)" exec worker sh
 
 minecraft-shell:
 	@docker compose -f "$(COMPOSE_FILE)" exec minecraft sh
@@ -78,7 +74,7 @@ restore-dry-run:
 	@bash ops/restore.sh --archive "$(ARCHIVE)" --dry-run
 
 observability:
-	@bash ops/observability.sh --worker-url "$(WORKER_URL)"
+	@bash ops/observability.sh
 
 dns-update:
 	@bash ops/dns-update.sh
@@ -88,7 +84,6 @@ dns-update-dry-run:
 
 validate:
 	@cp -n "$(ENV_EXAMPLE)" "$(ENV_FILE)"
-	@node --check server/src/index.js
 	@docker compose -f "$(COMPOSE_FILE)" config -q
 	@if command -v shellcheck >/dev/null 2>&1; then \
 	  shellcheck -x ops/*.sh; \

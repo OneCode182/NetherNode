@@ -7,6 +7,7 @@ node_modules/
 data/
 backups/
 tmp/
+server/server.jar
 graphify-staging/
 .agents/graphify-builds/*/graphify-out/
 .agents/graphify-out/*

@@ -1,13 +1,4 @@
-FROM node:20-alpine
+FROM itzg/minecraft-server:stable-java25
 
-WORKDIR /app
-
-COPY package.json ./
-
-RUN npm install --omit=dev
-
-COPY src ./src
-
-ENV NODE_ENV=production
-
-CMD ["npm", "start"]
+LABEL org.opencontainers.image.title="NetherNode Minecraft Runtime"
+LABEL org.opencontainers.image.description="Lean Minecraft Java/Fabric runtime wrapper for NetherNode."
