@@ -25,8 +25,11 @@ Step work must follow `.agents/workflows/nethernode-step.workflow.md`:
 
 Services:
 
-- `minecraft`: Fabric-capable Minecraft Java server (`itzg/minecraft-server`).
-- `worker`: tiny local workflow/metrics service for harness experiments.
+- `minecraft`: single Fabric-capable Minecraft Java server.
+
+The repo builds a thin wrapper image from `server/Dockerfile`, based on
+`itzg/minecraft-server:stable-java25`. Runtime defaults live in
+`server/runtime.env`; local secrets and operator choices stay in `.env`.
 
 Setup:
 
@@ -51,21 +54,23 @@ Ports:
 
 - Java: `25565/tcp`
 - Bedrock/Geyser future path: `19132/udp`
-- Worker health: `8080/tcp`
 
-## AWS EC2 IaC
+## Lean AWS Runtime
 
 Terraform/OpenTofu lives in `infra/`.
 
 Defaults:
 
 - Region: `us-east-1`
-- Instance: `t4g.medium`
+- Instance: `t4g.small` cost-first, upgrade to `t4g.medium` only if metrics fail
 - AMI: Amazon Linux 2023 ARM64
 - Access: AWS SSM, no public SSH
-- Storage: encrypted gp3 root volume
+- Storage: encrypted 20 GiB gp3 root volume
 - Budget: USD 8.33/month default
 - Ingress: `25565/tcp`, `19132/udp`
+- Runtime path: `/opt/nethernode/app`
+- World path: `/opt/nethernode/data/minecraft`
+- Backups path: `/opt/nethernode/backups`
 
 Validation:
 
@@ -77,16 +82,62 @@ terraform -chdir=infra validate
 
 No `terraform apply` in this workflow without explicit human approval.
 
+## GitHub CI/CD
+
+CI validates compose, scripts, Docker build, and Terraform. On push to `main`,
+`.github/workflows/image.yml` publishes the Minecraft image to GHCR.
+
+Manual cloud controls:
+
+- `.github/workflows/start-server.yml`: starts EC2, waits for SSM, pulls repo,
+  deploys `ghcr.io/<owner>/<repo>:latest`, starts Minecraft, optionally updates
+  DuckDNS.
+- `.github/workflows/stop-server.yml`: runs safe stop, creates backup, stops EC2.
+
+Required GitHub variables:
+
+- `AWS_REGION`
+- `AWS_ROLE_ARN`
+- `EC2_INSTANCE_ID`
+- `MINECRAFT_EULA=TRUE` after accepting the Minecraft EULA
+
+Optional DuckDNS settings:
+
+- Variable: `DUCKDNS_DOMAIN`
+- Secret: `DUCKDNS_TOKEN`
+
+GHCR package should be public for the EC2 host to pull without storing GitHub
+tokens on the instance.
+
+## Cost Model
+
+The design avoids ECS, Fargate, NLB, EFS, ECR, and Elastic IP for the MVP.
+Costs are dominated by running EC2 hours, public IPv4 hours while running, and
+small gp3 storage.
+
+- `t4g.small`: use first when AWS trial/free eligibility allows it.
+- `t4g.medium`: fallback only if TPS/MSPT/RAM metrics require it.
+- Public IPv4: charged only while the instance is running when no Elastic IP is
+  allocated.
+- Always-on is explicitly out of scope.
+
 ## Ops
 
 Scripts:
 
-- `ops/start.sh`: starts compose after `.env` exists.
-- `ops/stop-safe.sh`: RCON save + stop + compose down.
+- `ops/sync-runtime-env.sh`: syncs versioned Minecraft defaults into `.env`.
+- `ops/start.sh`: syncs runtime env, pulls image, starts compose, updates DuckDNS when configured.
+- `ops/stop-safe.sh`: RCON save + backup + stop + compose down.
 - `ops/backup.sh`: RCON save + tar backup + retention.
 - `ops/restore.sh`: restore archive into world dir.
 - `ops/observability.sh`: local status/metrics checks.
 - `ops/dns-update.sh`: DuckDNS update with token redaction in dry-run.
+
+## Azure Migration Note
+
+The app boundary is intentionally portable: Docker Compose + env file + volume.
+To migrate later, keep `server/`, `compose.yaml`, and `ops/` mostly unchanged;
+replace only `infra/` and GitHub AWS role usage with Azure VM/IAM equivalents.
 
 ## Graphify
 

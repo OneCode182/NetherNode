@@ -13,3 +13,10 @@
 - Decision: Markdown docs remain authority; Graphify narrows discovery.
 - Rationale: Semantic graph may be stale or missing without backend key.
 - Consequence: Agents check `project/` and `architecture/` first.
+
+## 2026-07-04 - Keep cloud architecture lean
+
+- Context: Operator has AWS trial credits but wants minimal spend and quick manual start/stop.
+- Decision: Use GHCR + one stoppable EC2 + Docker Compose; avoid ECS, Fargate, NLB, EFS, ECR, and Elastic IP for MVP.
+- Rationale: Fewer AWS services lowers fixed cost and keeps later Azure migration simple.
+- Consequence: GitHub workflows publish images and control EC2 through OIDC + SSM; EC2 runs only during play sessions.

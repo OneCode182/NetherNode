@@ -3,9 +3,11 @@
 ## Runtime
 
 - Docker Compose service `minecraft`.
-- Image: `itzg/minecraft-server`.
+- Image: GHCR-published NetherNode wrapper based on `itzg/minecraft-server:stable-java25`.
 - Type: `FABRIC` by default.
-- Persistent world: `./data/minecraft`.
+- Versioned runtime defaults: `server/runtime.env`.
+- Local persistent world: `./data/minecraft`.
+- Cloud persistent world: `/opt/nethernode/data/minecraft`.
 - Java port: `25565/tcp`.
 - Bedrock/Geyser future port: `19132/udp`.
 
@@ -19,5 +21,11 @@
 
 1. Copy `.env.example` to `.env`.
 2. Set `MINECRAFT_EULA=TRUE`.
-3. Run `make up`.
-4. Validate with `make status`, `make logs`, and client join test.
+3. Run `make up`; this syncs `server/runtime.env` into `.env`.
+4. Validate with `make status`, `make logs`, `make observability`, and client join test.
+
+## Cloud Workflow
+
+1. GitHub publishes GHCR image on `main`.
+2. `start-server` starts EC2 and runs `ops/start.sh`.
+3. `stop-server` runs `ops/stop-safe.sh` and stops EC2.
