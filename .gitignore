@@ -11,5 +11,7 @@ graphify-staging/
 .agents/graphify-builds/*/graphify-out/
 .agents/graphify-out/*
 !.agents/graphify-out/_.index.md
+.terraform/
+infra/.terraform/
 *.log
 .DS_Store

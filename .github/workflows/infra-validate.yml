@@ -1,0 +1,53 @@
+name: Infra Validate
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-validate.yml"
+  push:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-validate.yml"
+
+jobs:
+  terraform:
+    name: Terraform/OpenTofu validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: infra
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.4"
+
+      - name: Infra format check
+        run: |
+          IAC_CMD="terraform"
+          if command -v tofu >/dev/null 2>&1; then
+            IAC_CMD="tofu"
+          fi
+          ${IAC_CMD} fmt -check -recursive
+
+      - name: Infra init
+        run: |
+          IAC_CMD="terraform"
+          if command -v tofu >/dev/null 2>&1; then
+            IAC_CMD="tofu"
+          fi
+          ${IAC_CMD} init -backend=false
+
+      - name: Infra validate
+        run: |
+          IAC_CMD="terraform"
+          if command -v tofu >/dev/null 2>&1; then
+            IAC_CMD="tofu"
+          fi
+          ${IAC_CMD} validate
