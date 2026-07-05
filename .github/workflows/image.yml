@@ -1,0 +1,72 @@
+name: Minecraft Image
+
+on:
+  pull_request:
+    paths:
+      - "server/**"
+      - "compose.yaml"
+      - ".env.example"
+      - ".github/workflows/image.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "server/**"
+      - "compose.yaml"
+      - ".env.example"
+      - ".github/workflows/image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build Minecraft image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare image metadata
+        id: image
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "name=${image}" >> "$GITHUB_OUTPUT"
+          echo "push=${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Load runtime version
+        id: runtime
+        shell: bash
+        run: |
+          set -a
+          source server/runtime.env
+          set +a
+          echo "minecraft_version=${MINECRAFT_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: steps.image.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          file: server/Dockerfile
+          push: ${{ steps.image.outputs.push == 'true' }}
+          tags: |
+            ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+            ${{ steps.image.outputs.name }}:mc-${{ steps.runtime.outputs.minecraft_version }}-java25
+            ${{ steps.image.outputs.name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
