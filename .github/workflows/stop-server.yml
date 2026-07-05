@@ -3,6 +3,10 @@ name: Stop Server
 on:
   workflow_dispatch:
 
+concurrency:
+  group: nethernode-server-lifecycle
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
