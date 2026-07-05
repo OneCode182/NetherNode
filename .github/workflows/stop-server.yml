@@ -1,0 +1,84 @@
+name: Stop Server
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  stop:
+    name: Save, backup, and stop EC2
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Stop Minecraft safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          state="$(aws ec2 describe-instances \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --query "Reservations[0].Instances[0].State.Name" \
+            --output text)"
+
+          if [[ "$state" == "stopped" || "$state" == "terminated" ]]; then
+            echo "Instance is ${state}; nothing to stop."
+            exit 0
+          fi
+
+          if [[ "$state" != "running" ]]; then
+            aws ec2 wait instance-running --instance-ids "$EC2_INSTANCE_ID"
+          fi
+
+          for _ in {1..20}; do
+            status="$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=${EC2_INSTANCE_ID}" \
+              --query "InstanceInformationList[0].PingStatus" \
+              --output text 2>/dev/null || true)"
+            if [[ "$status" == "Online" ]]; then
+              break
+            fi
+            sleep 10
+          done
+
+          cat > /tmp/nethernode-stop.json <<'JSON'
+          {
+            "commands": [
+              "set -euo pipefail",
+              "APP_DIR=/opt/nethernode/app",
+              "if [ -d \"$APP_DIR\" ]; then cd \"$APP_DIR\"; BACKUP_SOURCE=/opt/nethernode/data/minecraft BACKUP_DEST=/opt/nethernode/backups bash ops/backup.sh || true; COMPOSE_FILE=\"$APP_DIR/compose.yaml\" bash ops/stop-safe.sh || true; fi"
+            ]
+          }
+          JSON
+
+          command_id="$(aws ssm send-command \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "NetherNode safe stop" \
+            --parameters file:///tmp/nethernode-stop.json \
+            --query "Command.CommandId" \
+            --output text)"
+
+          set +e
+          aws ssm wait command-executed --command-id "$command_id" --instance-id "$EC2_INSTANCE_ID"
+          status="$?"
+          set -e
+          aws ssm get-command-invocation --command-id "$command_id" --instance-id "$EC2_INSTANCE_ID" --output text || true
+
+          if [[ "$status" != "0" ]]; then
+            echo "Safe stop command failed; EC2 stop skipped."
+            exit "$status"
+          fi
+
+          aws ec2 stop-instances --instance-ids "$EC2_INSTANCE_ID"
+          aws ec2 wait instance-stopped --instance-ids "$EC2_INSTANCE_ID"

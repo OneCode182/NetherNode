@@ -27,3 +27,8 @@ output "budget_sns_topic_arn" {
   description = "SNS topic for budget alerts."
   value       = length(aws_sns_topic.budget_alerts) > 0 ? aws_sns_topic.budget_alerts[0].arn : null
 }
+
+output "github_actions_role_arn" {
+  description = "Role ARN for GitHub Actions OIDC server control."
+  value       = length(aws_iam_role.github_actions) > 0 ? aws_iam_role.github_actions[0].arn : null
+}

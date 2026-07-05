@@ -34,6 +34,8 @@ data "aws_ami" "al2023" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_security_group" "minecraft" {
   name        = "${var.project_name}-${var.environment}-app"
   description = "NetherNode app network boundary."
@@ -110,11 +112,35 @@ resource "aws_instance" "app" {
     app_repo_clone_path   = var.app_repo_clone_path
     compose_relative_path = var.compose_relative_path
     minecraft_eula        = var.minecraft_eula_accepted ? "TRUE" : "FALSE"
+    start_server_on_boot  = var.start_server_on_boot ? "true" : "false"
   })
 
   tags = merge(local.project_tags, {
     Name = "${var.project_name}-${var.environment}-minecraft"
   })
+}
+
+resource "aws_iam_openid_connect_provider" "github" {
+  count = local.github_oidc_enabled && var.create_github_oidc_provider && var.github_oidc_provider_arn == "" ? 1 : 0
+
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = []
+}
+
+resource "aws_iam_role" "github_actions" {
+  count = local.github_oidc_enabled ? 1 : 0
+
+  name               = "${var.project_name}-${var.environment}-github-actions"
+  assume_role_policy = data.aws_iam_policy_document.github_actions_assume[0].json
+}
+
+resource "aws_iam_role_policy" "github_actions" {
+  count = local.github_oidc_enabled ? 1 : 0
+
+  name   = "${var.project_name}-${var.environment}-server-control"
+  role   = aws_iam_role.github_actions[0].id
+  policy = data.aws_iam_policy_document.github_actions_control[0].json
 }
 
 resource "aws_sns_topic" "budget_alerts" {
@@ -158,5 +184,63 @@ data "aws_iam_policy_document" "ec2_assume_role" {
       type        = "Service"
       identifiers = ["ec2.amazonaws.com"]
     }
+  }
+}
+
+data "aws_iam_policy_document" "github_actions_assume" {
+  count = local.github_oidc_enabled ? 1 : 0
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [local.github_oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        "repo:${var.github_repository}:ref:refs/heads/${var.github_branch}",
+      ]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "github_actions_control" {
+  count = local.github_oidc_enabled ? 1 : 0
+
+  statement {
+    actions = [
+      "ec2:StartInstances",
+      "ec2:StopInstances",
+    ]
+    resources = [aws_instance.app.arn]
+  }
+
+  statement {
+    actions = [
+      "ec2:DescribeInstanceStatus",
+      "ec2:DescribeInstances",
+      "ssm:DescribeInstanceInformation",
+      "ssm:GetCommandInvocation",
+      "ssm:ListCommandInvocations",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    actions = ["ssm:SendCommand"]
+    resources = [
+      aws_instance.app.arn,
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:document/AWS-RunShellScript",
+    ]
   }
 }

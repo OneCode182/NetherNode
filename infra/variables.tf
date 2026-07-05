@@ -37,7 +37,7 @@ variable "subnet_id" {
 variable "instance_type" {
   description = "EC2 instance size."
   type        = string
-  default     = "t4g.medium"
+  default     = "t4g.small"
 }
 
 variable "ami_id" {
@@ -73,7 +73,7 @@ variable "minecraft_bedrock_port" {
 variable "root_volume_size_gib" {
   description = "Root EBS size in GiB."
   type        = number
-  default     = 30
+  default     = 20
 }
 
 variable "root_volume_iops" {
@@ -103,7 +103,7 @@ variable "app_repo_branch" {
 variable "app_repo_clone_path" {
   description = "Instance path to clone repo into."
   type        = string
-  default     = "/opt/nethernode"
+  default     = "/opt/nethernode/app"
 }
 
 variable "compose_relative_path" {
@@ -116,6 +116,36 @@ variable "minecraft_eula_accepted" {
   description = "Set true only after accepting the Minecraft EULA."
   type        = bool
   default     = false
+}
+
+variable "start_server_on_boot" {
+  description = "Start Minecraft during EC2 bootstrap. Keep false for low-cost manual start."
+  type        = bool
+  default     = false
+}
+
+variable "github_repository" {
+  description = "GitHub repository allowed to assume the deploy role, in owner/repo format. Empty disables GitHub OIDC resources."
+  type        = string
+  default     = ""
+}
+
+variable "github_branch" {
+  description = "GitHub branch allowed to assume the deploy role."
+  type        = string
+  default     = "main"
+}
+
+variable "github_oidc_provider_arn" {
+  description = "Existing GitHub OIDC provider ARN. Empty creates one when github_repository is set."
+  type        = string
+  default     = ""
+}
+
+variable "create_github_oidc_provider" {
+  description = "Create the account-level GitHub OIDC provider when github_repository is set and no provider ARN is supplied."
+  type        = bool
+  default     = true
 }
 
 variable "budget_enabled" {
