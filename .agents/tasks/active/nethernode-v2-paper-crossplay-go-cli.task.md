@@ -134,7 +134,7 @@ Subagents provide evidence. Leader decides.
 | S7 | done | CI/CD no-reset | PR/merge validate/build only; no automatic stop/restart/reset; manual lifecycle intact. | `rg "stop-instances|compose down|ssm send-command" .github/workflows` | `ci: protect running server from automatic resets` |
 | S8 | done | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
 | S9 | done | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
-| S10 | pending | SSH key local-only | Create `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2(.pub)`; never commit private key. | `stat -c "%a %n" /home/onecode/lab/ec2-nethernode-v2/nethernode-v2*` | No commit unless docs change |
+| S10 | done | SSH key local-only | Create `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2(.pub)`; never commit private key. | `stat -c "%a %n" /home/onecode/lab/ec2-nethernode-v2/nethernode-v2*` | No commit unless docs change |
 | S11 | pending | Final QA | Full suite, docs/harness alignment, no secrets, commits atomic. | `go test ./...`; `make validate`; Terraform validate; harness check | `docs: finalize NetherNode v2 operating docs` |
 
 ## Runtime Design Criteria
@@ -414,3 +414,14 @@ Append step evidence here.
   - `terraform -chdir=infra/azure init -backend=false` -> pass, `azurerm v4.80.0`.
   - `terraform -chdir=infra/azure validate` -> pass.
   - `rg "infra/azure|azurerm|Azure|Standard_B2s|terraform -chdir=infra/azure" README.md .agents/architecture infra/azure .agents/tasks/active/nethernode-v2-paper-crossplay-go-cli.task.md` -> pass.
+
+### S10 - SSH key local-only
+
+- Created or reused local-only ED25519 key material outside the repo:
+  - private key: `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2`
+  - public key: `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2.pub`
+- Permissions verified:
+  - private key mode `600`
+  - public key mode `644`
+- Public fingerprint: `SHA256:w+KYaNn7bPfzSRluMEEccadT7iTKvEncR0XqOcdjAlY nethernode-v2 (ED25519)`.
+- No private key is inside the repo; no AWS/Azure resource creation happened.
