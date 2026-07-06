@@ -73,6 +73,16 @@ func (r *Runner) runCompose(ctx context.Context, sub ...string) (string, error) 
 	return r.exec(ctx, "docker", args...)
 }
 
+// Run executes an arbitrary command (e.g. "df") through the same
+// hookable/DryRun-aware exec path Up/Down/PS use, so callers needing a
+// one-off system command (disk checks, etc.) don't have to reach past the
+// Runner's Exec injection point. Unlike the compose subcommands, Run does
+// not honor DryRun itself: callers that must skip the call entirely under
+// --dry-run should check r.DryRun before calling Run.
+func (r *Runner) Run(ctx context.Context, name string, args ...string) (string, error) {
+	return r.exec(ctx, name, args...)
+}
+
 // Up runs `docker compose up -d`.
 func (r *Runner) Up(ctx context.Context) (string, error) {
 	return r.runCompose(ctx, "up", "-d")
