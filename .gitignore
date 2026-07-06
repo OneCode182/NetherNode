@@ -19,3 +19,5 @@ infra/.terraform/
 infra/*.tfvars
 infra/terraform.tfstate*
 infra/tfplan
+/nethernode
+cmd/nethernode/nethernode
