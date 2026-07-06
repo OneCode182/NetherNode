@@ -161,6 +161,15 @@ Optional DuckDNS settings:
 GHCR package should be public for the EC2 host to pull without storing GitHub
 tokens on the instance.
 
+No-reset policy:
+
+- PR and merge workflows (`ci.yml`, `image.yml`, `infra-validate.yml`) only
+  validate/build/publish. They must not start, stop, restart, or mutate the EC2
+  Minecraft runtime or `/opt/nethernode/data/minecraft`.
+- Manual lifecycle workflows (`start-server.yml`, `stop-server.yml`) are the
+  only workflows allowed to send SSM commands or start/stop EC2.
+- `ops/check-ci-no-reset.sh` enforces this split in `make validate`.
+
 ## Cost Model
 
 Target: under USD 30 over 6 months (hard ceiling USD 50) against USD 90 AWS

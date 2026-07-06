@@ -111,6 +111,7 @@ validate:
 	@bash ops/backup-server.sh --help >/dev/null
 	@bash ops/nethernode help >/dev/null
 	@bash ops/plugins-sync.sh --help >/dev/null
+	@bash ops/check-ci-no-reset.sh >/dev/null
 	@NETHERNODE_SCRIPT_DIR=ops bash ops/nethernode plugins list >/dev/null
 	@bash ops/observability.sh --dry-run
 	@bash ops/backup.sh --dry-run

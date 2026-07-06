@@ -131,7 +131,7 @@ Subagents provide evidence. Leader decides.
 | S4 | done | CLI lifecycle | `start`, `stop`, `restart`, `status`, `save-server`, `backup-server`; status uses Docker/RCON/mcstatus. | `nethernode status --dry-run`; `nethernode backup-server --dry-run` | `feat(cli): add server lifecycle commands` |
 | S5 | done | CLI admin/settings | `admin list/add/remove`, `settings get/set --apply`, atomic file writes. | `nethernode admin list --dry-run`; `nethernode settings set difficulty hard --apply --dry-run` | `feat(cli): manage admins and server settings` |
 | S6 | done | Image + install | Multi-stage Dockerfile builds Go binary; install `/usr/local/bin/nethernode` from image. | `docker run --rm <image> nethernode help`; `bash -n ops/install-server-cli.sh` | `ci: package Go CLI in Minecraft image` |
-| S7 | pending | CI/CD no-reset | PR/merge validate/build only; no automatic stop/restart/reset; manual lifecycle intact. | `rg "stop-instances|compose down|ssm send-command" .github/workflows` | `ci: protect running server from automatic resets` |
+| S7 | done | CI/CD no-reset | PR/merge validate/build only; no automatic stop/restart/reset; manual lifecycle intact. | `rg "stop-instances|compose down|ssm send-command" .github/workflows` | `ci: protect running server from automatic resets` |
 | S8 | pending | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
 | S9 | pending | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
 | S10 | pending | SSH key local-only | Create `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2(.pub)`; never commit private key. | `stat -c "%a %n" /home/onecode/lab/ec2-nethernode-v2/nethernode-v2*` | No commit unless docs change |
@@ -360,4 +360,19 @@ Append step evidence here.
   - `docker run --rm --entrypoint nethernode nethernode:s6 help` -> pass, includes lifecycle/admin/settings/plugins commands.
   - `bash -n ops/install-server-cli.sh` -> pass.
   - image extraction smoke: `NETHERNODE_CLI_IMAGE=nethernode:s6 NETHERNODE_BIN_PATH=<tmp>/bin/nethernode NETHERNODE_SCRIPT_DIR=<tmp>/scripts bash ops/install-server-cli.sh` -> pass; installed binary and scripts mode `755`.
+  - `make validate` -> pass.
+
+### S7 - CI/CD no-reset
+
+- Graphify check at phase start: `graphify_available=true`, `semantic_backend_available=false`, `graphify_check_ok`; Markdown fallback used as source of truth.
+- Subagent audit confirmed existing PR/merge workflows were already non-mutating; only manual `start-server.yml` and `stop-server.yml` contained SSM/EC2 lifecycle commands.
+- Added `ops/check-ci-no-reset.sh` to fail if any non-lifecycle workflow contains EC2 start/stop, SSM send-command, `docker compose up/down/restart`, `ops/start.sh`, `ops/stop-safe.sh`, or `/opt/nethernode/data/minecraft`.
+- Wired guard into `make validate`.
+- README documents policy:
+  - PR/merge workflows validate/build/publish only.
+  - manual lifecycle workflows are the only place for EC2/SSM/server mutation.
+- Verification:
+  - `bash -n ops/check-ci-no-reset.sh` -> pass.
+  - `bash ops/check-ci-no-reset.sh` -> `ci_no_reset_ok`.
+  - `rg "stop-instances|compose down|ssm send-command|docker compose restart|docker compose up|/opt/nethernode/data/minecraft" .github/workflows` -> matches only manual `start-server.yml`/`stop-server.yml`.
   - `make validate` -> pass.
