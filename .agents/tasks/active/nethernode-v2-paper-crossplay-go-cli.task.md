@@ -1,0 +1,274 @@
+# Task: NetherNode V2 Paper Crossplay + Go CLI
+
+## Objective
+
+Upgrade NetherNode repo-only, with no deploy, no `terraform apply`, no AWS/Azure
+resource creation, no push.
+
+Target state:
+
+- PaperMC `26.2` as default runtime.
+- Maximum practical Java + Bedrock compatibility:
+  - Java clients on Windows and macOS.
+  - Nintendo Switch Bedrock through Geyser/Floodgate and console DNS workaround.
+  - ViaVersion for newer Java clients.
+  - ViaBackwards for older Java clients.
+- Go-based `nethernode` CLI as central server admin surface.
+- CI/CD does not stop, restart, reset, or overwrite the running Minecraft world.
+- AWS IaC remains intact.
+- Azure extension scaffold exists, without deployment.
+
+## Mandatory Mode
+
+- Use `$caveman` Ultra for leader and subagents.
+- Use `atomic-commit-helper` at the end of every step.
+- Never push.
+- Never deploy.
+- Never run `terraform apply`.
+- Never create AWS/Azure resources.
+
+## Mandatory Step Start
+
+Every step starts by loading:
+
+1. `AGENTS.md`
+2. `.agents/AGENTS.md`
+3. `.agents/env.json`
+4. `.prompts/orquestacion-dynamic-workflows.md`
+5. `.agents/workflows/nethernode-step.workflow.md`
+6. This task file.
+7. Graphify routing docs:
+   - `.agents/knowledge/graphify-operations.md`
+   - `.agents/knowledge/graphify-corpus-plan.md`
+   - `.agents/knowledge/graphify-readiness-audit.md`
+
+Then run:
+
+```bash
+python .agents/tools/build_graphify_focus_graphs.py --check
+```
+
+If Graphify is not semantically available, use Markdown as source of truth and
+record the fallback in this task file or `.agents/memory/mistakes.md` when it
+affects execution.
+
+## Harness Update Rule
+
+Every step must update harness when relevant:
+
+- This task file: status, evidence, blockers, next step.
+- `.agents/memory/decisions.md`: new durable decisions.
+- `.agents/memory/module-status.md`: module status changes.
+- `.agents/architecture/*.md`: architecture changes.
+- `.agents/memory/patterns.md`: reusable repo pattern learned.
+- `.agents/memory/mistakes.md`: repeated failure or bad assumption.
+
+Docs/harness stale means step is not closed.
+
+## Step Loop
+
+Each step must close this loop:
+
+1. Idea + Diseno Base
+2. Implementacion
+3. Testeo + Verificacion
+4. Evaluacion + Correcciones
+5. Documentacion + Harness update
+6. Commit Atomico with `atomic-commit-helper`
+
+Failure routing:
+
+- Test fails -> return to Implementacion.
+- Design mismatch -> return to Idea + Diseno Base.
+- Docs/harness stale -> return to Documentacion.
+- Same failure twice -> write escalation in this task file before continuing.
+- No next step until current step has passing verification or explicit documented skip.
+
+Commit gate:
+
+```bash
+git status --short --branch
+git diff --stat
+git log -n 5 --oneline --decorate
+git diff --check
+```
+
+Commit rules:
+
+- One atomic commit per step.
+- Stage exact files only.
+- Commit messages in English.
+- Never push.
+
+## Orchestration
+
+Leader:
+
+- Reads harness, repo, CI, runtime, infra before editing.
+- Creates implementation plan and commit plan before touching files.
+- Integrates subagent findings.
+- Makes final architecture decisions.
+
+Subagents:
+
+- Runtime subagent: PaperMC, Geyser, Floodgate, ViaVersion, ViaBackwards.
+- Go CLI subagent: `nethernode`, RCON, backup, status, admin/settings.
+- CI/CD subagent: no-reset workflows, GHCR/image build, Go build.
+- Infra subagent: AWS intact, Azure scaffold.
+- QA subagent: Java/Bedrock/version/migration matrix.
+- Docs/harness subagent: README, AGENTS, `.agents/` consistency.
+
+Subagents provide evidence. Leader decides.
+
+## Cronograma
+
+| Step | Status | Objective | Scope | Verification | Commit |
+|---|---|---|---|---|---|
+| S0 | done | Baseline + task harness | Create this task file, update task index, capture V2 scope. | `python .agents/tools/check_harness.py` | `docs: add NetherNode v2 task plan` |
+| S1 | pending | Runtime Paper | Fabric -> PaperMC `26.2`, Java25, preserve `/data`, keep `online-mode=false` initially. | `docker compose -f compose.yaml config -q`; `docker build -f server/Dockerfile .` | `feat(runtime): switch default server to Paper crossplay` |
+| S2 | pending | Plugins crossplay | Managed Geyser, Floodgate, ViaVersion, ViaBackwards; Geyser UDP `19132`; Floodgate auth. | `nethernode plugins sync --dry-run`; `rg "Geyser|Floodgate|ViaVersion|ViaBackwards"` | `feat(runtime): add managed Paper crossplay plugins` |
+| S3 | pending | Go CLI core | `go.mod`, `cmd/nethernode`, RCON client, compose runner, backup tar/gzip, mcstatus client. | `go test ./...`; `go build ./cmd/nethernode` | `feat(cli): add Go nethernode core commands` |
+| S4 | pending | CLI lifecycle | `start`, `stop`, `restart`, `status`, `save-server`, `backup-server`; status uses Docker/RCON/mcstatus. | `nethernode status --dry-run`; `nethernode backup-server --dry-run` | `feat(cli): add server lifecycle commands` |
+| S5 | pending | CLI admin/settings | `admin list/add/remove`, `settings get/set --apply`, atomic file writes. | `nethernode admin list --dry-run`; `nethernode settings set difficulty hard --apply --dry-run` | `feat(cli): manage admins and server settings` |
+| S6 | pending | Image + install | Multi-stage Dockerfile builds Go binary; install `/usr/local/bin/nethernode` from image. | `docker run --rm <image> nethernode help`; `bash -n ops/install-server-cli.sh` | `ci: package Go CLI in Minecraft image` |
+| S7 | pending | CI/CD no-reset | PR/merge validate/build only; no automatic stop/restart/reset; manual lifecycle intact. | `rg "stop-instances|compose down|ssm send-command" .github/workflows` | `ci: protect running server from automatic resets` |
+| S8 | pending | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
+| S9 | pending | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
+| S10 | pending | SSH key local-only | Create `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2(.pub)`; never commit private key. | `stat -c "%a %n" /home/onecode/lab/ec2-nethernode-v2/nethernode-v2*` | No commit unless docs change |
+| S11 | pending | Final QA | Full suite, docs/harness alignment, no secrets, commits atomic. | `go test ./...`; `make validate`; Terraform validate; harness check | `docs: finalize NetherNode v2 operating docs` |
+
+## Runtime Design Criteria
+
+- PaperMC `26.2` is default.
+- Existing world data remains in the same volume.
+- Do not delete `world/`, `ops.json`, whitelist, bans, usercache, backups, stats, or player data.
+- Do not require `server/server.jar`.
+- Keep Bedrock UDP `19132` open in compose and infra.
+- Keep Java TCP `25565` open.
+- Keep `online-mode=false` during first migration to preserve current offline UUIDs.
+- Document future `online-mode=true` migration as separate risky step requiring UUID mapping.
+
+## Crossplay Plugin Criteria
+
+Required stack:
+
+- PaperMC
+- Geyser-Spigot
+- Floodgate-Spigot
+- ViaVersion
+- ViaBackwards
+
+Expected Geyser config:
+
+- `bedrock.address=0.0.0.0`
+- `bedrock.port=19132`
+- `remote.address=127.0.0.1`
+- `remote.port=25565`
+- `remote.auth-type=floodgate`
+
+Compatibility truth:
+
+- ViaVersion helps newer Java clients connect to older server protocol.
+- ViaBackwards helps older Java clients connect to newer server protocol.
+- No promise of every historical/future version forever.
+- Future Mojang protocol changes may require plugin update.
+- Nintendo Switch needs BedrockConnect/GeyserConnect style DNS workaround.
+
+## Go CLI Criteria
+
+Public commands:
+
+```bash
+nethernode help
+nethernode start
+nethernode stop [--no-backup]
+nethernode restart [--no-backup]
+nethernode status [--host <host>] [--json]
+nethernode save-server
+nethernode backup-server [--retention 5]
+nethernode admin list
+nethernode admin add <player> [--level 4]
+nethernode admin remove <player>
+nethernode settings get <key>
+nethernode settings set <key> <value> [--apply]
+nethernode plugins sync [--dry-run]
+nethernode plugins list
+```
+
+Go implements directly:
+
+- RCON protocol.
+- `save-all flush`.
+- `save-off` / `save-on`.
+- `op` / `deop`.
+- backup tar/gzip.
+- retention prune.
+- `server.properties` atomic read/write.
+- mcstatus.io Java/Bedrock summary.
+
+Go may use shell/system commands only when system operation requires it:
+
+- `docker compose`
+- `docker inspect`
+- `df`/disk checks if needed
+
+Shell scripts become compatibility wrappers or fallback, not source of truth.
+
+## CI/CD Safety Criteria
+
+- PR and merge do not stop server.
+- PR and merge do not run `docker compose down`.
+- PR and merge do not run restart.
+- PR and merge do not mutate `/opt/nethernode/data/minecraft`.
+- Image build/publish is allowed.
+- Manual `start-server.yml` and `stop-server.yml` remain lifecycle entrypoints.
+- Repo sync on EC2 is allowed only through manual lifecycle/sync workflows.
+
+## Azure Criteria
+
+- Add extension base only.
+- Do not deploy Azure.
+- Do not add Azure secrets.
+- Do not alter AWS default path.
+- Keep cloud boundary portable:
+  - Docker Compose
+  - `.env`
+  - persistent volume
+  - `nethernode` CLI
+
+## Final Acceptance
+
+Done when:
+
+- PaperMC `26.2` default.
+- Geyser + Floodgate + ViaVersion + ViaBackwards managed.
+- Java Windows/macOS + Bedrock Switch documented.
+- Go `nethernode` root CLI.
+- `nethernode status` summarizes Docker/RCON/mcstatus/players/uptime/backups/disk.
+- CI/CD cannot auto stop/reset running server on PR/merge.
+- AWS IaC intact.
+- Azure scaffold ready.
+- Harness updated in every step.
+- Every step has atomic commit or documented skip.
+
+## Evidence Sources
+
+- Paper Docker type: https://docker-minecraft-server.readthedocs.io/en/latest/types-and-platforms/server-types/paper/
+- Paper getting started: https://docs.papermc.io/paper/getting-started/
+- Paper plugins: https://docs.papermc.io/paper/adding-plugins/
+- Geyser setup: https://geysermc.org/wiki/geyser/setup/
+- Floodgate setup: https://geysermc.org/wiki/floodgate/setup/
+- Switch BedrockConnect: https://geysermc.org/wiki/geyser/using-geyser-with-consoles/
+- ViaVersion/ViaBackwards: https://hangar.papermc.io/ViaVersion/ViaVersion
+- mcstatus API: https://mcstatus.io/docs
+
+## Verification Log
+
+Append step evidence here.
+
+### S0 - Baseline + task harness
+
+- Created `.agents/tasks/active/nethernode-v2-paper-crossplay-go-cli.task.md`.
+- Updated `.agents/tasks/_.index.md`.
+- Graphify check: `graphify_available=true`, `semantic_backend_available=false`, `graphify_check_ok`.
+- Harness check: `harness_ok`.
