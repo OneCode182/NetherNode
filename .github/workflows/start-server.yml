@@ -105,6 +105,7 @@ jobs:
               "sed -i 's|^MINECRAFT_DATA_DIR=.*|MINECRAFT_DATA_DIR=/opt/nethernode/data/minecraft|' .env",
               "sed -i 's|^BACKUP_SOURCE=.*|BACKUP_SOURCE=/opt/nethernode/data/minecraft|' .env",
               "sed -i 's|^BACKUP_DEST=.*|BACKUP_DEST=/opt/nethernode/backups|' .env",
+              "bash ops/install-server-cli.sh",
               "bash ops/start.sh",
           ]
           print(json.dumps({"commands": commands}))

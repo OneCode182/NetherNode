@@ -18,6 +18,8 @@ Read this file first. Then load `.agents/AGENTS.md`, `.agents/env.json`, and
   `.tar.gz` archives created by `ops/backup.sh`.
 - Use `ops/stop-safe.sh` for shutdowns; expected order is save, backup, stop
   Minecraft, then `docker compose down`.
+- On deployed EC2 hosts, prefer `nethernode save-server` for manual saves and
+  `nethernode backup-server` for save + backup + retention.
 - For low-disk EC2 operation, use `BACKUP_RETENTION=1` to keep only the newest
   local backup. Do not use `BACKUP_RETENTION=0` to mean "keep one" with the
   current script.

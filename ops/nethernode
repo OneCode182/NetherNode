@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+COMMAND="${1:-help}"
+if [[ $# -gt 0 ]]; then
+  shift
+fi
+
+SCRIPT_DIR="${NETHERNODE_SCRIPT_DIR:-/opt/nethernode/scripts}"
+
+usage() {
+  cat <<'EOF'
+NetherNode server CLI
+
+Usage:
+  nethernode help
+  nethernode save-server
+  nethernode backup-server
+
+Commands:
+  save-server    Flush full Minecraft world/player state to disk.
+  backup-server  Save full state, create backup archive, keep latest 5 backups.
+
+Aliases:
+  save           Alias for save-server.
+  backup         Alias for backup-server.
+
+Paths:
+  scripts: /opt/nethernode/scripts
+  data:    /opt/nethernode/data/minecraft
+  backups: /opt/nethernode/backups
+EOF
+}
+
+run_script() {
+  local script="$1"
+  shift
+
+  if [[ ! -x "${script}" ]]; then
+    echo "Missing or non-executable script: ${script}" >&2
+    exit 1
+  fi
+
+  exec "${script}" "$@"
+}
+
+case "${COMMAND}" in
+  help|-h|--help)
+    usage
+    ;;
+  save-server|save)
+    run_script "${SCRIPT_DIR}/save-server.sh" "$@"
+    ;;
+  backup-server|backup)
+    run_script "${SCRIPT_DIR}/backup-server.sh" "$@"
+    ;;
+  *)
+    echo "Unknown command: ${COMMAND}" >&2
+    echo >&2
+    usage >&2
+    exit 1
+    ;;
+esac

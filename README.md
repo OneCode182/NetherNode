@@ -135,6 +135,12 @@ Scripts:
 - `ops/start.sh`: syncs runtime env, pulls image, starts compose, updates DuckDNS when configured.
 - `ops/stop-safe.sh`: RCON save + backup + stop + compose down.
 - `ops/backup.sh`: RCON save + tar backup + retention.
+- `ops/save-server.sh`: force-save full world/player state with RCON.
+- `ops/backup-server.sh`: force-save, create backup archive, keep newest 5 backups.
+- `ops/install-server-cli.sh`: installs `/usr/local/bin/nethernode` and
+  `/opt/nethernode/scripts/*` on the EC2 host.
+- `ops/nethernode`: installed CLI wrapper for `nethernode save-server` and
+  `nethernode backup-server`.
 - `ops/restore.sh`: restore archive into world dir.
 - `ops/observability.sh`: local status/metrics checks (container, RCON players,
   stats, disk free vs the >20% target, backup count/sizes).
@@ -152,6 +158,18 @@ This command does not create a backup by itself. In NetherNode, `ops/backup.sh`
 uses it first, then creates a `.tar.gz` archive in `/opt/nethernode/backups`.
 `ops/stop-safe.sh` uses the safer shutdown sequence: `save-all flush`, backup,
 server stop, then `docker compose down`.
+
+The EC2 deploy workflow installs a host CLI:
+
+```bash
+nethernode save-server
+nethernode backup-server
+```
+
+`nethernode save-server` only flushes world/player state to disk.
+`nethernode backup-server` flushes state, pauses autosave while archiving,
+creates a `.tar.gz` under `/opt/nethernode/backups`, then keeps only the newest
+5 backups by default.
 
 Run a manual world save:
 

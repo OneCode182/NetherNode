@@ -5,7 +5,7 @@ COMPOSE_FILE ?= compose.yaml
 ENV_FILE ?= .env
 ENV_EXAMPLE ?= .env.example
 
-.PHONY: help env up down stop-safe restart logs status minecraft-shell backup backup-dry-run restore restore-dry-run observability dns-update dns-update-dry-run validate bootstrap
+.PHONY: help env up down stop-safe restart logs status minecraft-shell backup backup-dry-run install-cli restore restore-dry-run observability dns-update dns-update-dry-run validate bootstrap
 
 help:
 	@echo "NetherNode runtime tasks"
@@ -16,6 +16,7 @@ help:
 	@echo "  make logs               tail runtime logs"
 	@echo "  make backup             run backup"
 	@echo "  make backup-dry-run      run backup dry-run"
+	@echo "  make install-cli        install nethernode CLI on host"
 	@echo "  make restore ARCHIVE=... restore from archive"
 	@echo "  make observability      run health + storage checks"
 	@echo "  make dns-update-dry-run preview DuckDNS update"
@@ -59,6 +60,9 @@ backup:
 backup-dry-run:
 	@bash ops/backup.sh --dry-run
 
+install-cli:
+	@sudo bash ops/install-server-cli.sh
+
 restore:
 	@if [[ -z "$(ARCHIVE)" ]]; then \
 	  echo "Usage: make restore ARCHIVE=<path>"; \
@@ -86,10 +90,14 @@ validate:
 	@cp -n "$(ENV_EXAMPLE)" "$(ENV_FILE)"
 	@docker compose -f "$(COMPOSE_FILE)" config -q
 	@if command -v shellcheck >/dev/null 2>&1; then \
-	  shellcheck -x ops/*.sh; \
+	  shellcheck -x ops/*.sh ops/nethernode; \
 	else \
 	  echo "shellcheck missing; skipping"; \
 	fi
+	@bash -n ops/nethernode
+	@bash ops/save-server.sh --help >/dev/null
+	@bash ops/backup-server.sh --help >/dev/null
+	@bash ops/nethernode help >/dev/null
 	@bash ops/observability.sh --dry-run
 	@bash ops/backup.sh --dry-run
 	@bash ops/stop-safe.sh --dry-run
