@@ -48,3 +48,10 @@
 - Decision: Go CLI owns `ops.json` and `server.properties` editing with atomic writes; live changes use RCON when Minecraft exposes an immediate command, otherwise CLI writes file truth and reports restart/reload need.
 - Rationale: keeps admin/settings repeatable, testable, dry-run capable, and independent from shell-only scripts.
 - Consequence: `ops.json` fallback for new players assumes current V2 `online-mode=false` UUID mode; future `online-mode=true` migration must map UUIDs before adding new admins through offline file patching.
+
+## 2026-07-06 - Azure stays an extension scaffold
+
+- Context: NetherNode may migrate cloud later, but current MVP is AWS EC2 stoppable and must remain low-complexity.
+- Decision: Add `infra/azure` as validate-only Terraform scaffold; do not add Azure workflows, secrets, or deploy behavior.
+- Rationale: preserves portability without widening live operational surface or cost risk.
+- Consequence: AWS remains the default path; Azure work maps the same Docker Compose/env/volume/CLI boundary to a VM/network shape only.

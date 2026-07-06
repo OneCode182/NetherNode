@@ -133,7 +133,7 @@ Subagents provide evidence. Leader decides.
 | S6 | done | Image + install | Multi-stage Dockerfile builds Go binary; install `/usr/local/bin/nethernode` from image. | `docker run --rm <image> nethernode help`; `bash -n ops/install-server-cli.sh` | `ci: package Go CLI in Minecraft image` |
 | S7 | done | CI/CD no-reset | PR/merge validate/build only; no automatic stop/restart/reset; manual lifecycle intact. | `rg "stop-instances|compose down|ssm send-command" .github/workflows` | `ci: protect running server from automatic resets` |
 | S8 | done | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
-| S9 | pending | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
+| S9 | done | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
 | S10 | pending | SSH key local-only | Create `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2(.pub)`; never commit private key. | `stat -c "%a %n" /home/onecode/lab/ec2-nethernode-v2/nethernode-v2*` | No commit unless docs change |
 | S11 | pending | Final QA | Full suite, docs/harness alignment, no secrets, commits atomic. | `go test ./...`; `make validate`; Terraform validate; harness check | `docs: finalize NetherNode v2 operating docs` |
 
@@ -395,3 +395,22 @@ Append step evidence here.
   - `python .agents/tools/check_harness.py` -> `harness_ok`.
   - `python .agents/tools/build_graphify_focus_graphs.py --check` -> `graphify_check_ok`.
   - `git diff --check` -> pass.
+
+### S9 - Azure scaffold
+
+- Graphify check at phase start: `graphify_available=true`, `semantic_backend_available=false`, `graphify_check_ok`; Markdown fallback used as source of truth.
+- Subagent audit confirmed pre-fix gap: no `infra/azure` directory and only high-level Azure migration note existed.
+- Added validate-only `infra/azure` Terraform scaffold:
+  - `versions.tf` with `azurerm`.
+  - `variables.tf` for location, VM size, SSH public key, repo URL/branch, ports, disk, and ingress CIDRs.
+  - `main.tf` with resource group, VNet/subnet, public IP, NSG rules for Java TCP and Bedrock UDP, optional SSH rule, NIC, and Linux VM.
+  - `cloud-init.yaml` bootstraps `/opt/nethernode`, Docker, and repo clone.
+  - `outputs.tf` returns resource group, VM, public IP, Java endpoint, and Bedrock endpoint.
+  - `.terraform.lock.hcl` committed for reproducible provider resolution.
+- Added `infra/azure/README.md` mapping AWS MVP concepts to Azure equivalents and documenting validate-only commands.
+- Root README now points to `infra/azure`.
+- Verification:
+  - `terraform -chdir=infra/azure fmt -check` -> pass after fmt.
+  - `terraform -chdir=infra/azure init -backend=false` -> pass, `azurerm v4.80.0`.
+  - `terraform -chdir=infra/azure validate` -> pass.
+  - `rg "infra/azure|azurerm|Azure|Standard_B2s|terraform -chdir=infra/azure" README.md .agents/architecture infra/azure .agents/tasks/active/nethernode-v2-paper-crossplay-go-cli.task.md` -> pass.

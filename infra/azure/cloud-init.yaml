@@ -1,0 +1,21 @@
+#cloud-config
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - docker.io
+
+write_files:
+  - path: /opt/nethernode/bootstrap.env
+    permissions: "0644"
+    content: |
+      REPO_URL=${repo_url}
+      REPO_BRANCH=${repo_branch}
+
+runcmd:
+  - mkdir -p /opt/nethernode/app /opt/nethernode/data/minecraft /opt/nethernode/backups
+  - systemctl enable --now docker
+  - usermod -aG docker ${admin_username} || true
+  - if [ ! -d /opt/nethernode/app/.git ]; then git clone --branch "${repo_branch}" "${repo_url}" /opt/nethernode/app; fi
+  - chown -R ${admin_username}:${admin_username} /opt/nethernode || true

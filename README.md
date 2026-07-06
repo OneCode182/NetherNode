@@ -351,6 +351,14 @@ The app boundary is intentionally portable: Docker Compose + env file + volume.
 To migrate later, keep `server/`, `compose.yaml`, and `ops/` mostly unchanged;
 replace only `infra/` and GitHub AWS role usage with Azure VM/IAM equivalents.
 
+An Azure extension scaffold lives in `infra/azure/`. It is validate-only in the
+V2 workflow and must not be applied without explicit approval:
+
+```bash
+terraform -chdir=infra/azure init -backend=false
+terraform -chdir=infra/azure validate
+```
+
 ## Graphify
 
 Graphify docs and tooling live in `.agents/knowledge/` and `.agents/tools/`.
