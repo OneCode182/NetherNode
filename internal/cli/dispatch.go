@@ -23,12 +23,18 @@ Commands:
   status [--host H] [--json]    Docker/RCON/mcstatus/backups/disk summary.
   save-server                   RCON save-all flush.
   backup-server [--retention N] Save + archive + prune old backups.
+  admin list                    List ops.json entries.
+  admin add <player> [--level N] RCON op; fallback ops.json patch offline.
+  admin remove <player>          RCON deop; fallback ops.json removal offline.
+  settings get <key>            Print a server.properties value.
+  settings set <key> <value>    Atomically patch server.properties.
+    [--apply]                     Also apply live via RCON when possible.
 
 Global flags:
   --dry-run   Print planned actions/commands and exit 0 without touching
               docker, RCON, the network, or files.
 
-admin/settings/plugins management arrives in a later step.
+plugins management arrives in a later step.
 `
 
 // Run parses args, dispatches to the matching command, and returns the
@@ -77,6 +83,8 @@ var lifecycleCommands = map[string]func(*App, []string) error{
 	"status":        CmdStatus,
 	"save-server":   CmdSaveServer,
 	"backup-server": CmdBackupServer,
+	"admin":         CmdAdmin,
+	"settings":      CmdSettings,
 }
 
 // extractDryRun removes every "--dry-run" occurrence from args (regardless

@@ -2,8 +2,9 @@
 //
 // S3 shipped the core packages (rcon, compose, backup, mcstatus); S4 wires
 // them into the lifecycle commands (start, stop, restart, status,
-// save-server, backup-server) implemented in internal/cli. Admin and
-// settings management arrive in S5.
+// save-server, backup-server) implemented in internal/cli. S5 adds admin
+// (ops.json) and settings (server.properties) management. Plugins
+// management remains a shell wrapper (ops/nethernode) for now.
 package main
 
 import (

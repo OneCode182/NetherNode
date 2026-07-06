@@ -41,3 +41,10 @@
 - Decision: single mechanism `server/plugins.manifest` + `ops/plugins-sync.sh` (`nethernode plugins sync`); Geyser/Floodgate from download.geysermc.org v2 API (sha256), Via* from Modrinth v2 API (sha512, loader `paper`, `game_versions=[MINECRAFT_VERSION]`); `MINECRAFT_MODRINTH_PROJECTS` stays empty.
 - Rationale: uniform pin/resolve/verify/prune semantics, `--dry-run` verifiable in CI-less contexts, direct port path to the Go CLI (S3+).
 - Consequence: sync needs `curl` + `python3`; Bedrock join on 26.2 blocked upstream until Geyser ships 26.2 support (re-run sync); Via* 26.2 builds are SNAPSHOT channel.
+
+## 2026-07-06 - Go CLI admin/settings writes local truth safely
+
+- Context: Operators need `nethernode admin ...` and `nethernode settings ...` on the EC2 host without hand-editing JSON/properties files.
+- Decision: Go CLI owns `ops.json` and `server.properties` editing with atomic writes; live changes use RCON when Minecraft exposes an immediate command, otherwise CLI writes file truth and reports restart/reload need.
+- Rationale: keeps admin/settings repeatable, testable, dry-run capable, and independent from shell-only scripts.
+- Consequence: `ops.json` fallback for new players assumes current V2 `online-mode=false` UUID mode; future `online-mode=true` migration must map UUIDs before adding new admins through offline file patching.

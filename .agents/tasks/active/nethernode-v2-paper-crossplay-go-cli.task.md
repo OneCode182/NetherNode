@@ -129,7 +129,7 @@ Subagents provide evidence. Leader decides.
 | S2 | done | Plugins crossplay | Managed Geyser, Floodgate, ViaVersion, ViaBackwards; Geyser UDP `19132`; Floodgate auth. | `nethernode plugins sync --dry-run`; `rg "Geyser|Floodgate|ViaVersion|ViaBackwards"` | `feat(runtime): add managed Paper crossplay plugins` |
 | S3 | done | Go CLI core | `go.mod`, `cmd/nethernode`, RCON client, compose runner, backup tar/gzip, mcstatus client. | `go test ./...`; `go build ./cmd/nethernode` | `feat(cli): add Go nethernode core commands` |
 | S4 | done | CLI lifecycle | `start`, `stop`, `restart`, `status`, `save-server`, `backup-server`; status uses Docker/RCON/mcstatus. | `nethernode status --dry-run`; `nethernode backup-server --dry-run` | `feat(cli): add server lifecycle commands` |
-| S5 | pending | CLI admin/settings | `admin list/add/remove`, `settings get/set --apply`, atomic file writes. | `nethernode admin list --dry-run`; `nethernode settings set difficulty hard --apply --dry-run` | `feat(cli): manage admins and server settings` |
+| S5 | done | CLI admin/settings | `admin list/add/remove`, `settings get/set --apply`, atomic file writes. | `nethernode admin list --dry-run`; `nethernode settings set difficulty hard --apply --dry-run` | `feat(cli): manage admins and server settings` |
 | S6 | pending | Image + install | Multi-stage Dockerfile builds Go binary; install `/usr/local/bin/nethernode` from image. | `docker run --rm <image> nethernode help`; `bash -n ops/install-server-cli.sh` | `ci: package Go CLI in Minecraft image` |
 | S7 | pending | CI/CD no-reset | PR/merge validate/build only; no automatic stop/restart/reset; manual lifecycle intact. | `rg "stop-instances|compose down|ssm send-command" .github/workflows` | `ci: protect running server from automatic resets` |
 | S8 | pending | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
@@ -316,3 +316,26 @@ Append step evidence here.
   to orchestrate S0-S11 with Codex dynamic-workflows, Graphify, subagents,
   harness updates, verification gates, and atomic commits.
 - Registered workflow in `.agents/workflows/_.index.md` and `.agents/AGENTS.md`.
+
+### S5 - CLI admin/settings
+
+- Graphify check at phase start: `graphify_available=true`, `semantic_backend_available=false`, `graphify_check_ok`; Markdown fallback used as source of truth.
+- Implemented `nethernode admin list|add|remove` in Go:
+  - `admin list` reads `ops.json` directly.
+  - `admin add` runs RCON `op <player>` when live, validates `--level` range `1..4`, and falls back to atomic `ops.json` patch when RCON is unavailable.
+  - `admin remove` runs RCON `deop <player>` when live and falls back to atomic `ops.json` removal when RCON is unavailable.
+- Implemented `nethernode settings get|set --apply` in Go:
+  - reads/writes `server.properties` atomically while preserving comments/order.
+  - canonicalizes keys (`whitelist` -> `white-list`, trims/lowercases keys).
+  - supports free-form values with spaces, e.g. `motd`.
+  - `--apply` maps live settings to RCON where possible (`difficulty`, `white-list`).
+- Added `internal/opsjson` and `internal/serverprops` packages with unit tests for offline UUID, atomic writes, parsing, canonical writes, dry-runs, and error paths.
+- Verification:
+  - `go test -count=1 ./internal/cli -run 'TestCmdSettings|TestCmdAdmin|TestExtract'` -> pass.
+  - `go test -count=1 ./internal/opsjson ./internal/serverprops` -> pass.
+  - `go test ./...` -> pass.
+  - `go vet ./...` -> pass.
+  - `go build ./cmd/nethernode` -> pass.
+  - Dry-runs passed: `admin list`, `admin add Sirius182 --level 4`, `admin remove Sirius182`, `settings get whitelist`, `settings set whitelist true --apply`.
+  - Invalid level check: `admin add Sirius182 --level 5` exits non-zero with range error.
+- Design note: manual `ops.json` creation assumes current V2 migration setting `online-mode=false`; future `online-mode=true` migration requires UUID mapping runbook before using offline fallback for new admins.
