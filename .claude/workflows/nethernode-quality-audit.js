@@ -10,8 +10,8 @@ export const meta = {
 const REPO = '/home/onecode/lab/NetherNode'
 
 const COMMON = `You are a read-only senior auditor subagent for NetherNode (leader integrates; you investigate and propose only).
-Repo: ${REPO}. Product: low-cost manually started/stopped Minecraft Java/Fabric server on AWS. MVP truth (from harness docs):
-- ONE stoppable EC2 (Graviton t4g.small default, t4g.medium only after metrics), Docker Compose runtime, image on GHCR (itzg/minecraft-server:stable-java25 base, FABRIC).
+Repo: ${REPO}. Product: low-cost manually started/stopped Minecraft Paper crossplay server on AWS. MVP truth (from harness docs):
+- ONE stoppable EC2 (Graviton t4g.small default, t4g.medium only after metrics), Docker Compose runtime, image on GHCR (itzg/minecraft-server:stable-java25 base, PAPER).
 - FORBIDDEN in MVP path: ECS, Fargate, Lambda, NLB, EFS, EKS, GameLift, ECR, Elastic IP, public SSH (SSM only), terraform auto-apply.
 - Budget: <$30 target / $50 hard ceiling over 6 months, $90 credits. Region us-east-1. GitHub OIDC (no static AWS keys). DuckDNS after start instead of Elastic IP.
 - Metrics targets: latency p95 <130ms from Cota/Bogota, TPS ~20, MSPT p95 <35ms, CPU p95 <70%, disk free >20%.
@@ -71,7 +71,7 @@ Read: AGENTS.md, .agents/AGENTS.md, .agents/env.json, .agents/project/product-br
   {
     key: 'runtime',
     task: `Audit section "Runtime Architecture".
-Verify: server/ has NO Node worker (note: server/src/ exists — check if empty/stale and whether tracked in git); server/Dockerfile is thin Minecraft runtime wrapper over itzg/minecraft-server:stable-java25; server/runtime.env controls Minecraft version + server defaults; server/server.jar is gitignored AND not required by CI (it exists on disk — run git ls-files server/ and git check-ignore -v server/server.jar); compose.yaml has exactly one minecraft service; persistent data path configurable via env; Java 25-compatible image; Fabric defaults explicit. Also check .env vs .env.example: is .env tracked in git (secret risk)?
+Verify: server/ has NO Node worker (note: server/src/ exists — check if empty/stale and whether tracked in git); server/Dockerfile is thin Minecraft runtime wrapper over itzg/minecraft-server:stable-java25; server/runtime.env controls Minecraft version + server defaults; server/server.jar is gitignored AND not required by CI (it exists on disk — run git ls-files server/ and git check-ignore -v server/server.jar); compose.yaml has exactly one minecraft service; persistent data path configurable via env; Java 25-compatible image; Paper defaults explicit. Also check .env vs .env.example: is .env tracked in git (secret risk)?
 Run and report exit codes:
   cd ${REPO} && docker compose -f compose.yaml config -q
   cd ${REPO} && docker build -f server/Dockerfile server

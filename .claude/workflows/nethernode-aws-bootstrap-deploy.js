@@ -203,7 +203,7 @@ Verify NetherNode Minecraft online. EC2 instance id: get from terraform -chdir=$
 1. aws ec2 describe-instances --instance-ids <id> --query "Reservations[0].Instances[0].{State:State.Name,PublicIp:PublicIpAddress,PublicDns:PublicDnsName}" --output json
 2. If DUCKDNS_DOMAIN variable set in repo (gh variable list -R OneCode182/NetherNode): dig +short <domain>.duckdns.org, compare with public IP.
 3. mcstatus: curl -fsS "https://api.mcstatus.io/v2/status/java/<PublicIp>:25565?query=false&timeout=10" | jq '{online,host,port,version:.version.name_clean,players:.players.online}'
-   Retry up to 6 times, 30s apart (server boot + Fabric download takes minutes).
+   Retry up to 6 times, 30s apart (server boot + Paper download takes minutes).
 4. Optional SSM state snapshot: docker compose ps via ssm send-command.
 data: {state, public_ip, public_dns, duckdns, mcstatus_online (bool), mcstatus_version, players}. ok=true if instance running (mcstatus_online may be false if deploy step failed — still report).`,
   { label: 'verify:mcstatus', phase: 'Verify', schema: STEP, model: 'sonnet', effort: 'high' })

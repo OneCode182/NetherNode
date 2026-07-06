@@ -125,7 +125,7 @@ Subagents provide evidence. Leader decides.
 | Step | Status | Objective | Scope | Verification | Commit |
 |---|---|---|---|---|---|
 | S0 | done | Baseline + task harness | Create this task file, update task index, capture V2 scope. | `python .agents/tools/check_harness.py` | `docs: add NetherNode v2 task plan` |
-| S1 | pending | Runtime Paper | Fabric -> PaperMC `26.2`, Java25, preserve `/data`, keep `online-mode=false` initially. | `docker compose -f compose.yaml config -q`; `docker build -f server/Dockerfile .` | `feat(runtime): switch default server to Paper crossplay` |
+| S1 | done | Runtime Paper | Fabric -> PaperMC `26.2`, Java25, preserve `/data`, keep `online-mode=false` initially. | `docker compose -f compose.yaml config -q`; `docker build -f server/Dockerfile .` | `feat(runtime): switch default server to Paper crossplay` |
 | S2 | pending | Plugins crossplay | Managed Geyser, Floodgate, ViaVersion, ViaBackwards; Geyser UDP `19132`; Floodgate auth. | `nethernode plugins sync --dry-run`; `rg "Geyser|Floodgate|ViaVersion|ViaBackwards"` | `feat(runtime): add managed Paper crossplay plugins` |
 | S3 | pending | Go CLI core | `go.mod`, `cmd/nethernode`, RCON client, compose runner, backup tar/gzip, mcstatus client. | `go test ./...`; `go build ./cmd/nethernode` | `feat(cli): add Go nethernode core commands` |
 | S4 | pending | CLI lifecycle | `start`, `stop`, `restart`, `status`, `save-server`, `backup-server`; status uses Docker/RCON/mcstatus. | `nethernode status --dry-run`; `nethernode backup-server --dry-run` | `feat(cli): add server lifecycle commands` |
@@ -272,3 +272,11 @@ Append step evidence here.
 - Updated `.agents/tasks/_.index.md`.
 - Graphify check: `graphify_available=true`, `semantic_backend_available=false`, `graphify_check_ok`.
 - Harness check: `harness_ok`.
+
+### S1 - Runtime Paper
+
+- Graphify check: `graphify_available=true`, `semantic_backend_available=false` -> Markdown fallback.
+- `server/runtime.env`: `MINECRAFT_TYPE=FABRIC` -> `PAPER`; `MINECRAFT_VERSION=26.2` kept; `online-mode=false` kept; same `/data` volume; `server.jar` untracked and unreferenced.
+- Docs aligned Fabric -> Paper: README, `.env.example`, `server/Dockerfile` label, `.agents/{project,prompts,architecture,memory,agents}`, `.agents/env.json`, `.claude/workflows/*.js`.
+- Dynamic workflow `nethernode-s1-verify` (2 subagents): `docker compose -f compose.yaml config -q` exit 0; `docker build -f server/Dockerfile server/` exit 0 (image built); `python .agents/tools/check_harness.py` -> `harness_ok`; QA sweep: 0 stale Fabric runtime refs left, env consistency clean.
+- S2 risks captured by QA: populate `MINECRAFT_MODRINTH_PROJECTS` (or PLUGINS var) and confirm plugin install path `/data/plugins`; Floodgate key must persist on `/data`; check itzg native Geyser support before hand-rolling; ViaVersion/ViaBackwards compat tracks `MINECRAFT_VERSION` bumps.

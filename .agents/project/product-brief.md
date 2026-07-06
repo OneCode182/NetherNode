@@ -2,7 +2,7 @@
 
 ## Goal
 
-Provision a private Minecraft Java/Fabric server for 3-5 friends in Colombia with low latency, low AWS cost, quick start/stop, backups, observability, and future Bedrock/Switch crossplay experiments.
+Provision a private Minecraft Paper crossplay server (Java + Bedrock/Switch via Geyser) for 3-5 friends in Colombia with low latency, low AWS cost, quick start/stop, backups, and observability.
 
 ## Users
 
@@ -15,7 +15,7 @@ Provision a private Minecraft Java/Fabric server for 3-5 friends in Colombia wit
 - Region: `us-east-1` until friend latency tests prove otherwise.
 - Cloud shape: stoppable EC2, not Lambda.
 - Instance: Graviton `t4g.small` cost-first; `t4g.medium` only after metrics prove need.
-- Runtime: Docker Compose with a single Fabric-capable Minecraft service.
+- Runtime: Docker Compose with a single PaperMC service.
 - AWS credits: USD 90 over 6 months.
 - Budget target: spend as little as possible, ideally under USD 30 over 6 months; USD 50 is the hard ceiling.
 - Control: GitHub manual start/stop workflows plus local CLI.

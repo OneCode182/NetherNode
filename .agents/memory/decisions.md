@@ -27,3 +27,10 @@
 - Decision: Use `c7i-flex.large` (x86_64, 4 GiB) with x86_64 AL2023 AMI via new `ami_architecture` variable; keep repo default `t4g.small`/arm64. Reuse pre-existing account GitHub OIDC provider via `github_oidc_provider_arn` tfvar.
 - Rationale: 4 GiB matches original t4g.medium intent; GHCR image is currently amd64-only, so x86 avoids a multi-arch rebuild. ~USD 0.085/h, within credits.
 - Consequence: Higher hourly cost than Graviton; revisit t4g after account upgrade + multi-arch image build.
+
+## 2026-07-06 - Paper 26.2 as default runtime
+
+- Context: NetherNode V2 targets Java + Bedrock crossplay; Geyser/Floodgate/ViaVersion/ViaBackwards are Paper plugins, not Fabric mods.
+- Decision: `MINECRAFT_TYPE=PAPER`, `MINECRAFT_VERSION=26.2` in `server/runtime.env`; same itzg base image and same `/data` volume; `online-mode=false` preserved.
+- Rationale: Paper is the supported host for the crossplay plugin stack; itzg image switches type via env without touching world data.
+- Consequence: `mods/` is inert; plugins land in `/data/plugins` (S2). Flipping `online-mode=true` stays a separate documented migration (UUID mapping risk).

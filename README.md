@@ -1,6 +1,6 @@
 # NetherNode
 
-Ephemeral Minecraft Java/Fabric server platform on AWS, with containers, IaC, backups, observability, dynamic workflow harness, and low-cost start/stop operations.
+Ephemeral Minecraft Paper crossplay server platform on AWS, with containers, IaC, backups, observability, dynamic workflow harness, and low-cost start/stop operations.
 
 ## Agent Harness
 
@@ -25,7 +25,7 @@ Step work must follow `.agents/workflows/nethernode-step.workflow.md`:
 
 Services:
 
-- `minecraft`: single Fabric-capable Minecraft Java server.
+- `minecraft`: single PaperMC server (Java TCP `25565`, Bedrock UDP `19132` reserved for Geyser crossplay).
 
 The repo builds a thin wrapper image from `server/Dockerfile`, based on
 `itzg/minecraft-server:stable-java25`. Runtime defaults live in
