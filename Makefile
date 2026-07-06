@@ -5,7 +5,7 @@ COMPOSE_FILE ?= compose.yaml
 ENV_FILE ?= .env
 ENV_EXAMPLE ?= .env.example
 
-.PHONY: help env up down stop-safe restart logs status minecraft-shell backup backup-dry-run install-cli restore restore-dry-run observability dns-update dns-update-dry-run validate bootstrap
+.PHONY: help env up down stop-safe restart logs status minecraft-shell backup backup-dry-run install-cli restore restore-dry-run observability dns-update dns-update-dry-run plugins-sync plugins-sync-dry-run plugins-list validate bootstrap
 
 help:
 	@echo "NetherNode runtime tasks"
@@ -19,6 +19,9 @@ help:
 	@echo "  make install-cli        install nethernode CLI on host"
 	@echo "  make restore ARCHIVE=... restore from archive"
 	@echo "  make observability      run health + storage checks"
+	@echo "  make plugins-sync       sync managed crossplay plugins"
+	@echo "  make plugins-sync-dry-run preview plugin sync"
+	@echo "  make plugins-list       list managed plugins"
 	@echo "  make dns-update-dry-run preview DuckDNS update"
 	@echo "  make validate           run compose + script checks"
 
@@ -80,6 +83,15 @@ restore-dry-run:
 observability:
 	@bash ops/observability.sh
 
+plugins-sync:
+	@bash ops/plugins-sync.sh
+
+plugins-sync-dry-run:
+	@bash ops/plugins-sync.sh --dry-run
+
+plugins-list:
+	@bash ops/plugins-sync.sh --list
+
 dns-update:
 	@bash ops/dns-update.sh
 
@@ -98,6 +110,8 @@ validate:
 	@bash ops/save-server.sh --help >/dev/null
 	@bash ops/backup-server.sh --help >/dev/null
 	@bash ops/nethernode help >/dev/null
+	@bash ops/plugins-sync.sh --help >/dev/null
+	@NETHERNODE_SCRIPT_DIR=ops bash ops/nethernode plugins list >/dev/null
 	@bash ops/observability.sh --dry-run
 	@bash ops/backup.sh --dry-run
 	@bash ops/stop-safe.sh --dry-run

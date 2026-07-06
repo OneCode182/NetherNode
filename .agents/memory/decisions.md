@@ -34,3 +34,10 @@
 - Decision: `MINECRAFT_TYPE=PAPER`, `MINECRAFT_VERSION=26.2` in `server/runtime.env`; same itzg base image and same `/data` volume; `online-mode=false` preserved.
 - Rationale: Paper is the supported host for the crossplay plugin stack; itzg image switches type via env without touching world data.
 - Consequence: `mods/` is inert; plugins land in `/data/plugins` (S2). Flipping `online-mode=true` stays a separate documented migration (UUID mapping risk).
+
+## 2026-07-06 - Script-managed crossplay plugins over itzg MODRINTH_PROJECTS
+
+- Context: Floodgate publishes no Spigot/Paper artifact on Modrinth (only fabric/neoforge; live API check); Geyser's latest (2.10.1 b1177) declares support only up to MC 26.1.x; itzg `MODRINTH_PROJECTS` cannot cover Floodgate and gives no offline dry-run.
+- Decision: single mechanism `server/plugins.manifest` + `ops/plugins-sync.sh` (`nethernode plugins sync`); Geyser/Floodgate from download.geysermc.org v2 API (sha256), Via* from Modrinth v2 API (sha512, loader `paper`, `game_versions=[MINECRAFT_VERSION]`); `MINECRAFT_MODRINTH_PROJECTS` stays empty.
+- Rationale: uniform pin/resolve/verify/prune semantics, `--dry-run` verifiable in CI-less contexts, direct port path to the Go CLI (S3+).
+- Consequence: sync needs `curl` + `python3`; Bedrock join on 26.2 blocked upstream until Geyser ships 26.2 support (re-run sync); Via* 26.2 builds are SNAPSHOT channel.

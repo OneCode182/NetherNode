@@ -126,7 +126,7 @@ Subagents provide evidence. Leader decides.
 |---|---|---|---|---|---|
 | S0 | done | Baseline + task harness | Create this task file, update task index, capture V2 scope. | `python .agents/tools/check_harness.py` | `docs: add NetherNode v2 task plan` |
 | S1 | done | Runtime Paper | Fabric -> PaperMC `26.2`, Java25, preserve `/data`, keep `online-mode=false` initially. | `docker compose -f compose.yaml config -q`; `docker build -f server/Dockerfile .` | `feat(runtime): switch default server to Paper crossplay` |
-| S2 | pending | Plugins crossplay | Managed Geyser, Floodgate, ViaVersion, ViaBackwards; Geyser UDP `19132`; Floodgate auth. | `nethernode plugins sync --dry-run`; `rg "Geyser|Floodgate|ViaVersion|ViaBackwards"` | `feat(runtime): add managed Paper crossplay plugins` |
+| S2 | done | Plugins crossplay | Managed Geyser, Floodgate, ViaVersion, ViaBackwards; Geyser UDP `19132`; Floodgate auth. | `nethernode plugins sync --dry-run`; `rg "Geyser|Floodgate|ViaVersion|ViaBackwards"` | `feat(runtime): add managed Paper crossplay plugins` |
 | S3 | pending | Go CLI core | `go.mod`, `cmd/nethernode`, RCON client, compose runner, backup tar/gzip, mcstatus client. | `go test ./...`; `go build ./cmd/nethernode` | `feat(cli): add Go nethernode core commands` |
 | S4 | pending | CLI lifecycle | `start`, `stop`, `restart`, `status`, `save-server`, `backup-server`; status uses Docker/RCON/mcstatus. | `nethernode status --dry-run`; `nethernode backup-server --dry-run` | `feat(cli): add server lifecycle commands` |
 | S5 | pending | CLI admin/settings | `admin list/add/remove`, `settings get/set --apply`, atomic file writes. | `nethernode admin list --dry-run`; `nethernode settings set difficulty hard --apply --dry-run` | `feat(cli): manage admins and server settings` |
@@ -280,3 +280,13 @@ Append step evidence here.
 - Docs aligned Fabric -> Paper: README, `.env.example`, `server/Dockerfile` label, `.agents/{project,prompts,architecture,memory,agents}`, `.agents/env.json`, `.claude/workflows/*.js`.
 - Dynamic workflow `nethernode-s1-verify` (2 subagents): `docker compose -f compose.yaml config -q` exit 0; `docker build -f server/Dockerfile server/` exit 0 (image built); `python .agents/tools/check_harness.py` -> `harness_ok`; QA sweep: 0 stale Fabric runtime refs left, env consistency clean.
 - S2 risks captured by QA: populate `MINECRAFT_MODRINTH_PROJECTS` (or PLUGINS var) and confirm plugin install path `/data/plugins`; Floodgate key must persist on `/data`; check itzg native Geyser support before hand-rolling; ViaVersion/ViaBackwards compat tracks `MINECRAFT_VERSION` bumps.
+
+### S2 - Plugins crossplay
+
+- Dynamic workflow `nethernode-s2-investigate` (2 subagentes Sonnet, evidencia web/API viva):
+  - itzg has NO native Geyser toggle; `MODRINTH_PROJECTS` auto-cleans removed entries; `PATCH_DEFINITIONS` exists for config patching.
+  - Floodgate has no Spigot artifact on Modrinth (fabric/neoforge only) -> GeyserMC download API required.
+  - Geyser latest 2.10.1 b1177 supports up to MC `26.1.x`; no `26.2` yet (Modrinth query empty; download API metadata). ViaVersion/ViaBackwards resolve `26.2` on loader `paper` (SNAPSHOT builds).
+- Implemented: `server/plugins.manifest`, `ops/plugins-sync.sh` (resolve/checksum/install/prune + `--dry-run`/`--list`), `nethernode plugins sync|list` dispatch with local script fallback, installer ships `plugins-sync.sh`, Make targets, README crossplay section (incl. Switch BedrockConnect DNS workaround), Geyser config template (`auth-type=floodgate`, bedrock `0.0.0.0:19132`, remote `127.0.0.1:25565`).
+- Verification: `NETHERNODE_SCRIPT_DIR=ops bash ops/nethernode plugins sync --dry-run` exit 0, resolvió los 4 jars reales (Geyser 2.10.1 b1177, Floodgate 2.2.5 b138, Via* 5.10.1-SNAPSHOT); `plugins list` offline exit 0; `make validate` exit 0; `rg "Geyser|Floodgate|ViaVersion|ViaBackwards"` matches in README/ops/server config.
+- Known upstream gap (documented, not a blocker for repo-only scope): Bedrock join on `26.2` waits for Geyser `26.2` release; re-run `make plugins-sync`.

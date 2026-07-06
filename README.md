@@ -53,7 +53,40 @@ make observability
 Ports:
 
 - Java: `25565/tcp`
-- Bedrock/Geyser future path: `19132/udp`
+- Bedrock/Geyser: `19132/udp`
+
+## Crossplay
+
+Managed Paper plugin stack, declared in `server/plugins.manifest` and synced by
+`nethernode plugins sync` (`ops/plugins-sync.sh`):
+
+- Geyser-Spigot: Bedrock clients join over UDP `19132`.
+- Floodgate-Spigot: Bedrock players join without a Java account; its signing
+  key persists at `/data/plugins/floodgate/key.pem`.
+- ViaVersion: newer Java clients on an older server protocol.
+- ViaBackwards: older Java clients on a newer server protocol.
+
+```bash
+make plugins-sync-dry-run   # resolve versions, print plan
+make plugins-sync           # download jars into data/minecraft/plugins
+make plugins-list           # offline manifest + installed jars
+```
+
+Geyser config template (`server/config/geyser/config.yml`) is installed only
+when missing: `bedrock 0.0.0.0:19132`, `remote 127.0.0.1:25565`,
+`auth-type: floodgate`.
+
+Compatibility notes:
+
+- Nintendo Switch cannot add servers directly; players set console Primary DNS
+  to a BedrockConnect address and pick the server from its menu
+  (see https://geysermc.org/wiki/geyser/using-geyser-with-consoles/).
+- Via plugins do not promise every historical/future version; Mojang protocol
+  changes can require plugin updates.
+- As of 2026-07-06 Geyser/Floodgate publish support up to MC `26.1.x`; Bedrock
+  join on `26.2` works once Geyser ships `26.2` support (re-run
+  `make plugins-sync`). ViaVersion/ViaBackwards already resolve `26.2`
+  (snapshot builds).
 
 ## Lean AWS Runtime
 

@@ -15,7 +15,10 @@
 ## Plugin Policy
 
 - Paper plugins live in `/data/plugins`; leftover Fabric `mods/` is inert under Paper.
-- Crossplay stack (S2): Geyser-Spigot, Floodgate-Spigot, ViaVersion, ViaBackwards.
+- Crossplay stack is managed: `server/plugins.manifest` declares Geyser-Spigot, Floodgate-Spigot (GeyserMC download API; Floodgate publishes no Spigot artifact on Modrinth), ViaVersion, ViaBackwards (Modrinth API, loader `paper`, game version from `MINECRAFT_VERSION`).
+- `ops/plugins-sync.sh` (`nethernode plugins sync [--dry-run]`, `plugins list`) resolves, checksum-verifies, installs, and prunes superseded jars; state in `/data/plugins/.nethernode-plugins.state`.
+- `MINECRAFT_MODRINTH_PROJECTS` stays empty: one management mechanism only.
+- Geyser config template `server/config/geyser/config.yml` installs only when missing; Floodgate key persists at `/data/plugins/floodgate/key.pem`.
 - Switch/Bedrock compatibility depends on Geyser/Floodgate support for selected Minecraft version; Switch needs BedrockConnect-style DNS workaround.
 
 ## Local Workflow

@@ -1,0 +1,15 @@
+# NetherNode Geyser template. Installed by ops/plugins-sync.sh only when
+# /data/plugins/Geyser-Spigot/config.yml is missing; Geyser adds any missing
+# keys with defaults on first boot.
+bedrock:
+  # Listen on all interfaces inside the container; compose maps host UDP 19132.
+  address: 0.0.0.0
+  port: 19132
+  clone-remote-port: false
+remote:
+  # Paper runs in the same container, so loopback.
+  address: 127.0.0.1
+  port: 25565
+  # Floodgate lets Bedrock players join without a Java account. The shared
+  # signing key lives at /data/plugins/floodgate/key.pem and must persist.
+  auth-type: floodgate

@@ -7,6 +7,7 @@ if [[ $# -gt 0 ]]; then
 fi
 
 SCRIPT_DIR="${NETHERNODE_SCRIPT_DIR:-/opt/nethernode/scripts}"
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
   cat <<'EOF'
@@ -16,10 +17,14 @@ Usage:
   nethernode help
   nethernode save-server
   nethernode backup-server
+  nethernode plugins sync [--dry-run]
+  nethernode plugins list
 
 Commands:
   save-server    Flush full Minecraft world/player state to disk.
   backup-server  Save full state, create backup archive, keep latest 5 backups.
+  plugins sync   Sync managed Paper crossplay plugins from server/plugins.manifest.
+  plugins list   Show managed plugin manifest and installed jars (offline).
 
 Aliases:
   save           Alias for save-server.
@@ -37,8 +42,13 @@ run_script() {
   shift
 
   if [[ ! -x "${script}" ]]; then
-    echo "Missing or non-executable script: ${script}" >&2
-    exit 1
+    local fallback="${SELF_DIR}/$(basename "${script}")"
+    if [[ -x "${fallback}" ]]; then
+      script="${fallback}"
+    else
+      echo "Missing or non-executable script: ${script}" >&2
+      exit 1
+    fi
   fi
 
   exec "${script}" "$@"
@@ -53,6 +63,25 @@ case "${COMMAND}" in
     ;;
   backup-server|backup)
     run_script "${SCRIPT_DIR}/backup-server.sh" "$@"
+    ;;
+  plugins)
+    SUBCOMMAND="${1:-list}"
+    if [[ $# -gt 0 ]]; then
+      shift
+    fi
+    case "${SUBCOMMAND}" in
+      sync)
+        run_script "${SCRIPT_DIR}/plugins-sync.sh" "$@"
+        ;;
+      list)
+        run_script "${SCRIPT_DIR}/plugins-sync.sh" --list "$@"
+        ;;
+      *)
+        echo "Unknown plugins subcommand: ${SUBCOMMAND}" >&2
+        usage >&2
+        exit 1
+        ;;
+    esac
     ;;
   *)
     echo "Unknown command: ${COMMAND}" >&2

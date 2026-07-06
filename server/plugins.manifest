@@ -1,0 +1,10 @@
+# NetherNode managed Paper crossplay plugins.
+# Format: name|source|project|channel|pin
+#   source=geysermc  project on https://download.geysermc.org/v2, channel = platform.
+#   source=modrinth  project = slug, channel = loader; resolves newest version
+#                    matching MINECRAFT_VERSION from server/runtime.env.
+# pin=latest resolves newest matching artifact at sync time.
+geyser|geysermc|geyser|spigot|latest
+floodgate|geysermc|floodgate|spigot|latest
+viaversion|modrinth|viaversion|paper|latest
+viabackwards|modrinth|viabackwards|paper|latest

@@ -15,6 +15,7 @@ install_file() {
 mkdir -p "${SCRIPT_DIR}"
 install_file "${PROJECT_ROOT}/ops/save-server.sh" "${SCRIPT_DIR}/save-server.sh"
 install_file "${PROJECT_ROOT}/ops/backup-server.sh" "${SCRIPT_DIR}/backup-server.sh"
+install_file "${PROJECT_ROOT}/ops/plugins-sync.sh" "${SCRIPT_DIR}/plugins-sync.sh"
 install_file "${PROJECT_ROOT}/ops/nethernode" "${BIN_PATH}"
 
 echo "Installed NetherNode CLI: ${BIN_PATH}"
