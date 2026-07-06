@@ -135,7 +135,7 @@ Subagents provide evidence. Leader decides.
 | S8 | done | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
 | S9 | done | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
 | S10 | done | SSH key local-only | Create `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2(.pub)`; never commit private key. | `stat -c "%a %n" /home/onecode/lab/ec2-nethernode-v2/nethernode-v2*` | No commit unless docs change |
-| S11 | pending | Final QA | Full suite, docs/harness alignment, no secrets, commits atomic. | `go test ./...`; `make validate`; Terraform validate; harness check | `docs: finalize NetherNode v2 operating docs` |
+| S11 | done | Final QA | Full suite, docs/harness alignment, no secrets, commits atomic. | `go test ./...`; `make validate`; Terraform validate; harness check | `docs: finalize NetherNode v2 operating docs` |
 
 ## Runtime Design Criteria
 
@@ -425,3 +425,37 @@ Append step evidence here.
   - public key mode `644`
 - Public fingerprint: `SHA256:w+KYaNn7bPfzSRluMEEccadT7iTKvEncR0XqOcdjAlY nethernode-v2 (ED25519)`.
 - No private key is inside the repo; no AWS/Azure resource creation happened.
+
+### S11 - Final QA
+
+- Full objective audit completed against S0-S11:
+  - PaperMC `26.2` default runtime already captured in S1.
+  - Geyser + Floodgate + ViaVersion + ViaBackwards managed in S2.
+  - Go `nethernode` root CLI covers lifecycle, status, backups, admin, settings, and plugin script delegation by S6.
+  - CI/CD no-reset guard present by S7.
+  - Paper migration runbook present by S8.
+  - Azure extension scaffold present and validate-only by S9.
+  - SSH key material created outside repo by S10.
+- Verification commands all passed:
+  - `python .agents/tools/build_graphify_focus_graphs.py --check`
+  - `python .agents/tools/check_harness.py`
+  - `go test ./...`
+  - `go vet ./...`
+  - `go build ./cmd/nethernode`
+  - `docker compose -f compose.yaml config -q`
+  - `make validate`
+  - `terraform -chdir=infra fmt -check -recursive`
+  - `terraform -chdir=infra init -backend=false`
+  - `terraform -chdir=infra validate`
+  - `terraform -chdir=infra/azure fmt -check`
+  - `terraform -chdir=infra/azure init -backend=false`
+  - `terraform -chdir=infra/azure validate`
+  - `docker build -f server/Dockerfile -t nethernode:s11 .`
+  - `docker run --rm --entrypoint nethernode nethernode:s11 help`
+  - `bash ops/check-ci-no-reset.sh`
+  - `rg "PaperMC|Geyser|Floodgate|ViaVersion|ViaBackwards|Paper Migration|Azure scaffold|no-reset|online-mode|UUID" README.md .agents infra/azure server ops`
+- Secret/tracked-file audit:
+  - `git ls-files` found no tracked `.env`, `tfstate`, `tfvars`, jars, or `/home/onecode/lab/ec2-nethernode-v2` key files.
+  - Private-key/secret regex matches were limited to `.env.example` placeholders and Go test fixture strings.
+  - local SSH private key mode remains `600`; public key mode remains `644`.
+- Final repo state before S11 docs commit: clean branch `dev`.
