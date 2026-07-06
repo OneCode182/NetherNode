@@ -265,6 +265,76 @@ starting the EC2 instance preserves the world as long as the backing EBS volume
 is not deleted or the instance is not terminated with delete-on-termination
 enabled.
 
+### Paper Migration Runbook
+
+Use this when moving an existing world into the Paper crossplay runtime or when
+validating a Fabric-like world after the runtime change. Do this repo-only or on
+a staging path first; do not overwrite the live world until verification passes.
+
+1. Save and backup current world:
+
+   ```bash
+   nethernode save-server
+   nethernode backup-server --retention 5
+   ```
+
+2. Restore the backup into staging, never straight over live data first:
+
+   ```bash
+   cd /opt/nethernode/app
+
+   bash ops/restore.sh \
+     --archive /opt/nethernode/backups/<backup>.tar.gz \
+     --target /opt/nethernode/staging/paper-migration \
+     --dry-run
+
+   bash ops/restore.sh \
+     --archive /opt/nethernode/backups/<backup>.tar.gz \
+     --target /opt/nethernode/staging/paper-migration
+   ```
+
+3. Preserve these files/directories from `/opt/nethernode/data/minecraft`:
+   `world/`, `world_nether/`, `world_the_end/`, `level.dat`, `playerdata/`,
+   `stats/`, `advancements/`, `ops.json`, `whitelist.json`,
+   `banned-players.json`, `banned-ips.json`, `usercache.json`,
+   `server.properties`, `plugins/`, and `config/` when already Paper/Geyser
+   managed.
+
+4. Do not migrate active Fabric-only runtime folders as Paper features:
+   `mods/`, Fabric loader/libs, and Fabric-only config. Keep them in the backup
+   archive for rollback evidence, but treat them as inert under Paper.
+
+5. Keep `online-mode=false` for the first Paper migration if the existing world
+   was played in offline mode. This preserves current offline UUIDs for player
+   inventory, XP, position, stats, advancements, and admin entries. Moving to
+   `online-mode=true` is a separate migration requiring UUID mapping; doing it
+   casually can make players appear as new users with empty inventories.
+
+6. Verify Paper before replacing live data:
+
+   ```bash
+   docker compose -f compose.yaml config -q
+   nethernode plugins list
+   nethernode status --dry-run
+   rg -n "online-mode|level-name|white-list" /opt/nethernode/staging/paper-migration/server.properties
+   ```
+
+   Then perform a real smoke test on a disposable/staging host: Java client
+   join, Bedrock/Geyser join when upstream version support exists, admin
+   command check, inventory/XP/position check, and short play/save/restart check.
+
+7. Roll back by stopping the server and restoring the known-good backup into the
+   live target only after confirming the target:
+
+   ```bash
+   cd /opt/nethernode/app
+
+   bash ops/restore.sh \
+     --archive /opt/nethernode/backups/<known-good>.tar.gz \
+     --target /opt/nethernode/data/minecraft \
+     --force
+   ```
+
 Manual checks without a script:
 
 - Latency (target: p95 under 130 ms from Cota/Bogota): each player runs

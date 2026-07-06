@@ -21,6 +21,15 @@
 - Geyser config template `server/config/geyser/config.yml` installs only when missing; Floodgate key persists at `/data/plugins/floodgate/key.pem`.
 - Switch/Bedrock compatibility depends on Geyser/Floodgate support for selected Minecraft version; Switch needs BedrockConnect-style DNS workaround.
 
+## Paper Migration Safety
+
+- Migration source of truth is the backup archive, not live hand-edits.
+- Flow: `nethernode save-server` -> `nethernode backup-server --retention 5` -> restore backup into a staging target -> verify Paper/plugins/players -> replace live data only after pass.
+- Preserve: `world/`, `world_nether/`, `world_the_end/`, `level.dat`, `playerdata/`, `stats/`, `advancements/`, `ops.json`, whitelist/bans, `usercache.json`, and `server.properties`.
+- Treat Fabric `mods/` and Fabric-only config as rollback evidence, not active Paper runtime.
+- Keep `online-mode=false` for the first Paper migration when the existing server used offline UUIDs. Moving to `online-mode=true` needs a separate UUID mapping migration; otherwise inventories, XP, locations, stats, advancements, and admin identities can drift.
+- Rollback path: stop server, restore known-good backup into `/opt/nethernode/data/minecraft` with explicit `--target` and `--force`, then start and verify join/save.
+
 ## Local Workflow
 
 1. Copy `.env.example` to `.env`.

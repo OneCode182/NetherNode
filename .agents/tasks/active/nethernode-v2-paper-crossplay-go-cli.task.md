@@ -132,7 +132,7 @@ Subagents provide evidence. Leader decides.
 | S5 | done | CLI admin/settings | `admin list/add/remove`, `settings get/set --apply`, atomic file writes. | `nethernode admin list --dry-run`; `nethernode settings set difficulty hard --apply --dry-run` | `feat(cli): manage admins and server settings` |
 | S6 | done | Image + install | Multi-stage Dockerfile builds Go binary; install `/usr/local/bin/nethernode` from image. | `docker run --rm <image> nethernode help`; `bash -n ops/install-server-cli.sh` | `ci: package Go CLI in Minecraft image` |
 | S7 | done | CI/CD no-reset | PR/merge validate/build only; no automatic stop/restart/reset; manual lifecycle intact. | `rg "stop-instances|compose down|ssm send-command" .github/workflows` | `ci: protect running server from automatic resets` |
-| S8 | pending | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
+| S8 | done | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
 | S9 | pending | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
 | S10 | pending | SSH key local-only | Create `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2(.pub)`; never commit private key. | `stat -c "%a %n" /home/onecode/lab/ec2-nethernode-v2/nethernode-v2*` | No commit unless docs change |
 | S11 | pending | Final QA | Full suite, docs/harness alignment, no secrets, commits atomic. | `go test ./...`; `make validate`; Terraform validate; harness check | `docs: finalize NetherNode v2 operating docs` |
@@ -376,3 +376,22 @@ Append step evidence here.
   - `bash ops/check-ci-no-reset.sh` -> `ci_no_reset_ok`.
   - `rg "stop-instances|compose down|ssm send-command|docker compose restart|docker compose up|/opt/nethernode/data/minecraft" .github/workflows` -> matches only manual `start-server.yml`/`stop-server.yml`.
   - `make validate` -> pass.
+
+### S8 - Migration runbook
+
+- Graphify check at phase start: `graphify_available=true`, `semantic_backend_available=false`, `graphify_check_ok`; Markdown fallback used as source of truth.
+- Subagent audit confirmed missing pre-fix coverage: README had backup/restore notes but no Fabric-like -> Paper migration procedure; architecture doc had assumptions but no runbook.
+- Added README `Paper Migration Runbook`:
+  - save + backup first.
+  - restore backup into staging target before touching live world.
+  - preserve `world/`, dimensions, `level.dat`, player data, stats, advancements, `ops.json`, whitelist/bans, `usercache.json`, `server.properties`, Paper/Geyser managed `plugins/` and `config/`.
+  - treat Fabric `mods/` and Fabric-only config as rollback evidence, not active Paper runtime.
+  - keep `online-mode=false` for first migration to preserve offline UUIDs; `online-mode=true` requires separate UUID mapping.
+  - verify Paper/plugins/Java/Bedrock/admin/inventory/XP/position/save/restart before replacing live data.
+  - rollback by restoring known-good backup with explicit `--target` and `--force`.
+- Added matching `.agents/architecture/minecraft-runtime.architecture.md` safety summary.
+- Verification:
+  - `rg "Paper migration|UUID|online-mode|restore|rollback|mods|world/|ops.json" README.md .agents/architecture .agents/tasks/active/nethernode-v2-paper-crossplay-go-cli.task.md` -> pass.
+  - `python .agents/tools/check_harness.py` -> `harness_ok`.
+  - `python .agents/tools/build_graphify_focus_graphs.py --check` -> `graphify_check_ok`.
+  - `git diff --check` -> pass.
