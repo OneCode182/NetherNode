@@ -140,6 +140,56 @@ Scripts:
   stats, disk free vs the >20% target, backup count/sizes).
 - `ops/dns-update.sh`: DuckDNS update with token redaction in dry-run.
 
+### World Save And Backup Safety
+
+`rcon-cli save-all flush` sends Minecraft's `save-all flush` command through
+RCON. It forces the running server to write the current world and player state
+to disk before the next operation continues. This includes chunks, player
+position, inventory, XP, stats, advancements, `level.dat`, and runtime files
+persisted under `/opt/nethernode/data/minecraft`.
+
+This command does not create a backup by itself. In NetherNode, `ops/backup.sh`
+uses it first, then creates a `.tar.gz` archive in `/opt/nethernode/backups`.
+`ops/stop-safe.sh` uses the safer shutdown sequence: `save-all flush`, backup,
+server stop, then `docker compose down`.
+
+Run a manual world save:
+
+```bash
+sudo docker exec nethernode-minecraft rcon-cli save-all flush
+```
+
+Create a backup while keeping only the newest local backup:
+
+```bash
+cd /opt/nethernode/app
+
+sudo BACKUP_SOURCE=/opt/nethernode/data/minecraft \
+  BACKUP_DEST=/opt/nethernode/backups \
+  BACKUP_RETENTION=1 \
+  COMPOSE_FILE=/opt/nethernode/app/compose.yaml \
+  bash ops/backup.sh
+```
+
+Safely stop the server while keeping only the newest local backup:
+
+```bash
+cd /opt/nethernode/app
+
+sudo BACKUP_SOURCE=/opt/nethernode/data/minecraft \
+  BACKUP_DEST=/opt/nethernode/backups \
+  BACKUP_RETENTION=1 \
+  COMPOSE_FILE=/opt/nethernode/app/compose.yaml \
+  bash ops/stop-safe.sh
+```
+
+Use `BACKUP_RETENTION=1` for a low-disk policy that leaves only the latest
+backup archive. Do not use `BACKUP_RETENTION=0` to mean "keep one"; in the
+current script, `0` skips pruning after creating the new archive. Stopping and
+starting the EC2 instance preserves the world as long as the backing EBS volume
+is not deleted or the instance is not terminated with delete-on-termination
+enabled.
+
 Manual checks without a script:
 
 - Latency (target: p95 under 130 ms from Cota/Bogota): each player runs
