@@ -29,12 +29,13 @@ Commands:
   settings get <key>            Print a server.properties value.
   settings set <key> <value>    Atomically patch server.properties.
     [--apply]                     Also apply live via RCON when possible.
+  plugins sync [--dry-run]      Sync managed Paper crossplay plugins.
+  plugins list                  List managed plugin manifest/install state.
 
 Global flags:
   --dry-run   Print planned actions/commands and exit 0 without touching
               docker, RCON, the network, or files.
 
-plugins management arrives in a later step.
 `
 
 // Run parses args, dispatches to the matching command, and returns the
@@ -85,6 +86,7 @@ var lifecycleCommands = map[string]func(*App, []string) error{
 	"backup-server": CmdBackupServer,
 	"admin":         CmdAdmin,
 	"settings":      CmdSettings,
+	"plugins":       CmdPlugins,
 }
 
 // extractDryRun removes every "--dry-run" occurrence from args (regardless

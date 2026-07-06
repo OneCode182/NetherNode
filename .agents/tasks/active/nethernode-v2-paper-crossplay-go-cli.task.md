@@ -130,7 +130,7 @@ Subagents provide evidence. Leader decides.
 | S3 | done | Go CLI core | `go.mod`, `cmd/nethernode`, RCON client, compose runner, backup tar/gzip, mcstatus client. | `go test ./...`; `go build ./cmd/nethernode` | `feat(cli): add Go nethernode core commands` |
 | S4 | done | CLI lifecycle | `start`, `stop`, `restart`, `status`, `save-server`, `backup-server`; status uses Docker/RCON/mcstatus. | `nethernode status --dry-run`; `nethernode backup-server --dry-run` | `feat(cli): add server lifecycle commands` |
 | S5 | done | CLI admin/settings | `admin list/add/remove`, `settings get/set --apply`, atomic file writes. | `nethernode admin list --dry-run`; `nethernode settings set difficulty hard --apply --dry-run` | `feat(cli): manage admins and server settings` |
-| S6 | pending | Image + install | Multi-stage Dockerfile builds Go binary; install `/usr/local/bin/nethernode` from image. | `docker run --rm <image> nethernode help`; `bash -n ops/install-server-cli.sh` | `ci: package Go CLI in Minecraft image` |
+| S6 | done | Image + install | Multi-stage Dockerfile builds Go binary; install `/usr/local/bin/nethernode` from image. | `docker run --rm <image> nethernode help`; `bash -n ops/install-server-cli.sh` | `ci: package Go CLI in Minecraft image` |
 | S7 | pending | CI/CD no-reset | PR/merge validate/build only; no automatic stop/restart/reset; manual lifecycle intact. | `rg "stop-instances|compose down|ssm send-command" .github/workflows` | `ci: protect running server from automatic resets` |
 | S8 | pending | Migration runbook | Backup -> staging restore -> Paper verify; UUID/online-mode/Fabric leftovers documented. | `rg "Paper migration|UUID|online-mode" README.md .agents` | `docs: add Paper migration safety runbook` |
 | S9 | pending | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
@@ -339,3 +339,25 @@ Append step evidence here.
   - Dry-runs passed: `admin list`, `admin add Sirius182 --level 4`, `admin remove Sirius182`, `settings get whitelist`, `settings set whitelist true --apply`.
   - Invalid level check: `admin add Sirius182 --level 5` exits non-zero with range error.
 - Design note: manual `ops.json` creation assumes current V2 migration setting `online-mode=false`; future `online-mode=true` migration requires UUID mapping runbook before using offline fallback for new admins.
+
+### S6 - Image + install
+
+- Graphify check at phase start: `graphify_available=true`, `semantic_backend_available=false`, `graphify_check_ok`; Markdown fallback used as source of truth.
+- Subagent audit confirmed pre-fix gaps: `server/Dockerfile` was only `itzg/minecraft-server`, image workflow used `context: server`, and `ops/install-server-cli.sh` installed the legacy shell wrapper instead of the Go binary.
+- Implemented multi-stage `server/Dockerfile`: `golang:1.26-alpine` builds `cmd/nethernode`; final `itzg/minecraft-server:stable-java25` includes `/usr/local/bin/nethernode`.
+- Changed image workflow to use repo-root build context and trigger on `server/**`, `cmd/**`, `internal/**`, `go.mod`, `.dockerignore`, compose, env example, and workflow changes.
+- Added root `.dockerignore` so root-context Docker builds exclude secrets, world data, backups, Terraform state, generated graphs, jars, logs, and local binaries.
+- `ops/install-server-cli.sh` now installs scripts plus a Go CLI binary:
+  - preferred: extract `/usr/local/bin/nethernode` from `NETHERNODE_CLI_IMAGE`.
+  - development fallback: local `go build`.
+  - last fallback: legacy `ops/nethernode` shell wrapper.
+- Added Go `plugins sync|list` delegation to `plugins-sync.sh` so replacing the shell wrapper with the Go binary does not lose managed crossplay plugin commands.
+- Verification:
+  - `go test ./...` -> pass.
+  - `go vet ./...` -> pass.
+  - `go build ./cmd/nethernode` -> pass.
+  - `docker build -f server/Dockerfile -t nethernode:s6 .` -> pass.
+  - `docker run --rm --entrypoint nethernode nethernode:s6 help` -> pass, includes lifecycle/admin/settings/plugins commands.
+  - `bash -n ops/install-server-cli.sh` -> pass.
+  - image extraction smoke: `NETHERNODE_CLI_IMAGE=nethernode:s6 NETHERNODE_BIN_PATH=<tmp>/bin/nethernode NETHERNODE_SCRIPT_DIR=<tmp>/scripts bash ops/install-server-cli.sh` -> pass; installed binary and scripts mode `755`.
+  - `make validate` -> pass.

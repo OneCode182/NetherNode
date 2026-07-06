@@ -30,6 +30,8 @@ type Config struct {
 	PublicHost  string // MINECRAFT_PUBLIC_HOST, used for mcstatus.io lookups; overridable by --host
 	JavaPort    string // MINECRAFT_PORT
 	BedrockPort string // MINECRAFT_BEDROCK_PORT
+
+	ScriptDir string // NETHERNODE_SCRIPT_DIR, for legacy/shell-only helpers
 }
 
 // RCONAddr returns the "host:port" pair used to dial RCON.
@@ -90,6 +92,8 @@ func LoadConfigFrom(getenv getenvFunc, readFile readFileFunc) Config {
 		PublicHost:  firstNonEmpty(getenv("MINECRAFT_PUBLIC_HOST"), "localhost"),
 		JavaPort:    firstNonEmpty(getenv("MINECRAFT_PORT"), "25565"),
 		BedrockPort: firstNonEmpty(getenv("MINECRAFT_BEDROCK_PORT"), "19132"),
+
+		ScriptDir: firstNonEmpty(getenv("NETHERNODE_SCRIPT_DIR"), "/opt/nethernode/scripts"),
 	}
 
 	if cfg.RCONPassword == "" {

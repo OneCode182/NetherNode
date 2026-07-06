@@ -118,10 +118,26 @@ No `terraform apply` in this workflow without explicit human approval.
 ## GitHub CI/CD
 
 Validation is split by path filters: `ci.yml` validates compose and scripts on
-every push/PR; `image.yml` validates the Docker build when `server/` or compose
-files change; `infra-validate.yml` validates Terraform when `infra/` changes.
-On push to `main`, `.github/workflows/image.yml` publishes the Minecraft image
+every push/PR; `image.yml` validates the Docker build when `server/`, `cmd/`,
+`internal/`, `go.mod`, or compose files change; `infra-validate.yml` validates
+Terraform when `infra/` changes. On push to `master`,
+`.github/workflows/image.yml` publishes the Minecraft image
 to GHCR.
+
+The image is built from the repo root so it can package the Go CLI into the
+runtime image:
+
+```bash
+docker build -f server/Dockerfile -t nethernode:local .
+docker run --rm --entrypoint nethernode nethernode:local help
+```
+
+To install the exact CLI binary from an image on the host:
+
+```bash
+sudo NETHERNODE_CLI_IMAGE=ghcr.io/<owner>/nethernode:latest \
+  bash ops/install-server-cli.sh
+```
 
 Manual cloud controls:
 
@@ -170,10 +186,9 @@ Scripts:
 - `ops/backup.sh`: RCON save + tar backup + retention.
 - `ops/save-server.sh`: force-save full world/player state with RCON.
 - `ops/backup-server.sh`: force-save, create backup archive, keep newest 5 backups.
-- `ops/install-server-cli.sh`: installs `/usr/local/bin/nethernode` and
-  `/opt/nethernode/scripts/*` on the EC2 host.
-- `ops/nethernode`: installed CLI wrapper for `nethernode save-server` and
-  `nethernode backup-server`.
+- `ops/install-server-cli.sh`: installs the Go `/usr/local/bin/nethernode`
+  CLI and `/opt/nethernode/scripts/*` on the EC2 host.
+- `ops/nethernode`: legacy shell wrapper kept as a local/fallback helper.
 - `ops/restore.sh`: restore archive into world dir.
 - `ops/observability.sh`: local status/metrics checks (container, RCON players,
   stats, disk free vs the >20% target, backup count/sizes).
