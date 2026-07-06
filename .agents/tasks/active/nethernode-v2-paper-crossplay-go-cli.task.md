@@ -309,3 +309,10 @@ Append step evidence here.
 - `go build ./...`, `go vet ./...`, `gofmt -l .` (empty): all clean. `go test ./... -count=1`: all packages `ok`, fully offline (`t.TempDir`, fake `Exec`/RCON dialer/mcstatus client, no real socket/docker/network).
 - Manual verification (repo root, binary built to scratchpad, not installed): `nethernode status --dry-run` exit 0, printed docker-inspect/rcon/mcstatus/backup-scan/df plan lines, no docker/network/file touch; `nethernode backup-server --dry-run` exit 0, printed save-all/save-off/save-all/archive/save-on plan, no RCON dial or archive written. `git status --short --branch` confirms only `cmd/nethernode/main.go` (modified), `internal/compose/compose.go` (modified, added `Runner.Run`), and new `internal/cli/` are touched; `data/` and world state untouched.
 - Harness update: this entry, `S4` row -> `done`, `.agents/memory/module-status.md` Go CLI row updated.
+
+### Dynamic workflow artifact
+
+- Added `.agents/workflows/dynamic-workflows-nethernode-v2-paper-go.workflow.md`
+  to orchestrate S0-S11 with Codex dynamic-workflows, Graphify, subagents,
+  harness updates, verification gates, and atomic commits.
+- Registered workflow in `.agents/workflows/_.index.md` and `.agents/AGENTS.md`.
