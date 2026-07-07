@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -108,16 +109,19 @@ func (c *Client) authenticate(password string) error {
 	}
 }
 
-// Command runs cmd on the server and returns its combined output. Large or
-// multi-part responses (either split across several RESPONSE_VALUE packets,
-// or a single packet whose bytes arrive over multiple TCP reads) are
-// reassembled transparently.
+// maxResponseBody is the largest payload Minecraft puts in one
+// SERVERDATA_RESPONSE_VALUE packet; a full packet means more may follow.
+const maxResponseBody = 4096
+
+// Command runs cmd on the server and returns its combined output.
 //
-// End-of-response detection uses the standard RCON trailer trick: a second,
-// empty SERVERDATA_EXECCOMMAND packet is sent right after cmd. Its id is
-// distinct from the main request, and because the server processes and
-// answers requests in order, every packet belonging to cmd's response is
-// guaranteed to arrive before the (empty) response to the trailer.
+// Minecraft's RCON implementation does not tolerate pipelined requests (a
+// second packet sent before its response is read makes the vanilla/Paper
+// server drop the connection), so the classic empty-EXECCOMMAND trailer
+// trick is deliberately not used. Instead the response is read one packet at
+// a time: any packet shorter than the 4096-byte payload maximum ends the
+// response; after a full packet, further fragments are awaited briefly and
+// a quiet wire ends the response.
 func (c *Client) Command(cmd string) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -129,24 +133,29 @@ func (c *Client) Command(cmd string) (string, error) {
 	if err := writePacket(c.conn, id, typeCommand, cmd); err != nil {
 		return "", fmt.Errorf("rcon: send command packet: %w", err)
 	}
-	trailerID := c.newID()
-	if err := writePacket(c.conn, trailerID, typeCommand, ""); err != nil {
-		return "", fmt.Errorf("rcon: send trailer packet: %w", err)
-	}
 
 	var body strings.Builder
 	for {
 		pkt, err := readPacket(c.conn)
 		if err != nil {
+			if body.Len() > 0 && errors.Is(err, os.ErrDeadlineExceeded) {
+				// Quiet wire after a full fragment: response complete.
+				return body.String(), nil
+			}
 			return "", fmt.Errorf("rcon: read command response: %w", err)
 		}
-		switch pkt.id {
-		case trailerID:
-			return body.String(), nil
-		case id:
-			body.WriteString(pkt.body)
-		default:
+		if pkt.id != id {
 			// Ignore anything unrelated to this exchange.
+			continue
+		}
+		body.WriteString(pkt.body)
+		if len(pkt.body) < maxResponseBody {
+			return body.String(), nil
+		}
+		// Full packet: more fragments may follow. Wait briefly for them so a
+		// single-packet-exactly-4096 response still terminates.
+		if err := c.conn.SetReadDeadline(time.Now().Add(250 * time.Millisecond)); err != nil {
+			return body.String(), nil
 		}
 	}
 }

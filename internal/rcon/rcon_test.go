@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
 	"testing"
 	"time"
 )
@@ -171,10 +172,13 @@ func TestCommandFragmentedResponse(t *testing.T) {
 		}
 		serveCommands(t, conn, func(cmd string) []string {
 			if cmd == "big" {
-				// Split the logical response across three RESPONSE_VALUE
-				// packets sharing the request id, as a real Source/Minecraft
-				// server would for output exceeding one packet.
-				return []string{"Hello, ", "fragmented ", "World!"}
+				// Real servers fill each RESPONSE_VALUE to the 4096-byte
+				// payload max and only the final fragment runs short; the
+				// client uses that to detect end-of-response without
+				// pipelining a trailer packet (Minecraft drops pipelined
+				// connections).
+				full := strings.Repeat("a", 4096)
+				return []string{full, full, "World!"}
 			}
 			return []string{""}
 		})
@@ -190,8 +194,8 @@ func TestCommandFragmentedResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Command: %v", err)
 	}
-	if want := "Hello, fragmented World!"; got != want {
-		t.Fatalf("Command: got %q, want %q", got, want)
+	if want := strings.Repeat("a", 8192) + "World!"; got != want {
+		t.Fatalf("Command: got %d bytes, want %d bytes", len(got), len(want))
 	}
 }
 
