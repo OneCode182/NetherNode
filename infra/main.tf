@@ -57,6 +57,17 @@ resource "aws_security_group" "minecraft" {
     cidr_blocks = var.minecraft_ingress_cidrs
   }
 
+  dynamic "ingress" {
+    for_each = var.enable_ssh_ingress ? [1] : []
+    content {
+      description = "SSH (aux/test environments only)"
+      from_port   = 22
+      to_port     = 22
+      protocol    = "tcp"
+      cidr_blocks = var.ssh_ingress_cidrs
+    }
+  }
+
   egress {
     from_port        = 0
     to_port          = 0
