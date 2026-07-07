@@ -13,11 +13,12 @@ CONFIG_TEMPLATES=(
   "${PROJECT_ROOT}/server/config/tab/config.yml|${PLUGINS_DIR}/TAB/config.yml"
 )
 
-# PlaceholderAPI eCloud expansions installed when missing.
-# Format: <jar name>|<download url>
+# PlaceholderAPI eCloud expansions (by expansion name) installed when
+# missing; resolved against the eCloud v3 API at sync time.
 PAPI_EXPANSIONS=(
-  "player.jar|https://api.extendedclip.com/v2/download/player/latest/"
+  "player"
 )
+PAPI_ECLOUD_API="${PAPI_ECLOUD_API:-https://ecloud.placeholderapi.com/api/v3/?platform=bukkit}"
 STATE_FILE="${PLUGINS_DIR}/.nethernode-plugins.state"
 MODRINTH_API="${MODRINTH_API:-https://api.modrinth.com/v2}"
 GEYSERMC_API="${GEYSERMC_API:-https://download.geysermc.org/v2}"
@@ -279,17 +280,42 @@ for spec in "${CONFIG_TEMPLATES[@]}"; do
   fi
 done
 
-for spec in "${PAPI_EXPANSIONS[@]}"; do
-  jar="${spec%%|*}"
-  url="${spec##*|}"
-  target="${PLUGINS_DIR}/PlaceholderAPI/expansions/${jar}"
-  if [[ ! -f "${target}" ]]; then
-    log "PAPI expansion missing: installing ${jar}"
-    if [[ "${DRY_RUN}" != "true" ]]; then
-      mkdir -p "$(dirname "${target}")"
-      curl -fsSL -o "${target}.tmp" "${url}"
-      mv "${target}.tmp" "${target}"
-    fi
+resolve_papi_expansion() {
+  local name="$1"
+  curl -fsSL "${PAPI_ECLOUD_API}" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+items = data if isinstance(data, list) else data.get('expansions', data)
+if isinstance(items, dict):
+    entry = next((v for k, v in items.items() if k.lower() == '${name}'.lower()), None)
+else:
+    entry = next((x for x in items if str(x.get('name', '')).lower() == '${name}'.lower()), None)
+if not entry or not entry.get('versions'):
+    sys.exit(3)
+v = max(entry['versions'], key=lambda x: x.get('created_at', 0))
+print('|'.join([v['version'], v['url']]))
+"
+}
+
+for name in "${PAPI_EXPANSIONS[@]}"; do
+  target="${PLUGINS_DIR}/PlaceholderAPI/expansions/${name}.jar"
+  if [[ -f "${target}" ]]; then
+    continue
+  fi
+  resolved="$(resolve_papi_expansion "${name}")" || true
+  if [[ -z "${resolved}" ]]; then
+    echo "Could not resolve PAPI expansion '${name}' from eCloud" >&2
+    FAILURES=$((FAILURES + 1))
+    continue
+  fi
+  IFS='|' read -r exp_version exp_url <<<"${resolved}"
+  log "PAPI expansion ${name}: install ${exp_version}"
+  if [[ "${DRY_RUN}" == "true" ]]; then
+    continue
+  fi
+  if ! { mkdir -p "$(dirname "${target}")" && curl -fsSL -o "${target}.tmp" "${exp_url}" && mv "${target}.tmp" "${target}"; }; then
+    echo "Install failed for PAPI expansion '${name}'" >&2
+    FAILURES=$((FAILURES + 1))
   fi
 done
 
