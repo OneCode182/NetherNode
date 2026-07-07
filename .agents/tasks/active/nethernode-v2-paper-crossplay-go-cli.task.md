@@ -459,3 +459,11 @@ Append step evidence here.
   - Private-key/secret regex matches were limited to `.env.example` placeholders and Go test fixture strings.
   - local SSH private key mode remains `600`; public key mode remains `644`.
 - Final repo state before S11 docs commit: clean branch `dev`.
+
+### Post-S11 - Leader audit (2026-07-06)
+
+- Leader re-ran the suite independently: `go test ./...` ok (8 packages); spec dry-runs (`status`, `backup-server`, `admin list`, `settings set difficulty hard --apply --dry-run`) exit 0; `make validate` exit 0 with `ci_no_reset_ok`; Azure `terraform validate` Success; `infra/*.tf` AWS diff empty since S2; S6 re-proven with real image build + `docker run --entrypoint nethernode ... help`; SSH key `600/644` outside repo; no key material in any commit; tracked-files secret sweep clean.
+- Corrections applied by leader:
+  - `dynamic-workflows-nethernode-v2-paper-go.workflow.md` now specializes `dynamic-workflows-claude-code.workflow.md` (it pointed to the Codex contract) and the stale "resume from S5" note was replaced with the closed S0-S11 state.
+  - `ci.yml` gains a `go` job (vet/test/build on PR/push): Go unit tests previously ran only locally; `image.yml` covered build only. Validate/build only; no-reset intact.
+- Known accepted deviation: extra commit `40c9d6a` shares the S3 subject (gitignore-only mis-commit), documented in `.agents/memory/mistakes.md`; history is local-only (never pushed), squashable before push if desired.

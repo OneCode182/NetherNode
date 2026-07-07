@@ -2,8 +2,11 @@
 
 ## Authority
 
-This workflow specializes `dynamic-workflows-codex.workflow.md` for the active
-V2 task:
+This workflow specializes `dynamic-workflows-claude-code.workflow.md` (leader
+`Fable 5`; subagents default `Sonnet 5` `xhigh`, `Haiku` for simple tasks,
+`Opus`/`max` only on documented strong technical block; never `Fable 5`
+subagents). For Codex sessions use `dynamic-workflows-codex.workflow.md` as the
+equivalent contract. Active V2 task:
 
 `tasks/active/nethernode-v2-paper-crossplay-go-cli.task.md`
 
@@ -28,7 +31,8 @@ Before touching files in each phase:
 2. Read `.agents/AGENTS.md`.
 3. Read `.agents/env.json`.
 4. Read `.prompts/orquestacion-dynamic-workflows.md`.
-5. Read `.agents/workflows/dynamic-workflows-codex.workflow.md`.
+5. Read `.agents/workflows/dynamic-workflows-claude-code.workflow.md` (or the
+   Codex contract when running under Codex).
 6. Read `.agents/workflows/nethernode-step.workflow.md`.
 7. Read this workflow.
 8. Read `.agents/tasks/active/nethernode-v2-paper-crossplay-go-cli.task.md`.
@@ -103,16 +107,10 @@ Never push.
 
 ## Current Resume Point
 
-Known task status:
-
-- S0 done.
-- S1 done.
-- S2 done.
-- S3 done.
-- S4 done.
-- S5 in progress/dirty; audit current work before editing.
-
-Resume from S5 unless current repo evidence proves otherwise.
+Known task status (2026-07-06): S0-S11 done; V2 task closed with one atomic
+commit per step (see task Verification Log). This workflow stays as the
+contract for reruns, corrections, and future V2.x phases. Before any rerun,
+audit repo evidence (`git log`, task file) instead of trusting this list.
 
 ## Phases
 
