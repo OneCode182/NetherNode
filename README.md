@@ -66,9 +66,9 @@ Managed Paper plugin stack, declared in `server/plugins.manifest` and synced by
 - ViaVersion: newer Java clients on an older server protocol.
 - ViaBackwards: older Java clients on a newer server protocol.
 - TAB + PlaceholderAPI (Player expansion): view-only player info for everyone
-  — hearts, numeric ping and XP level in the tab list, and a bare 5-segment
-  health bar (20% per segment) above each head in proximity
-  (template: `server/config/tab/config.yml`).
+  — tab list shows `❤ health Lv xp | (x, y, z) | ping ms` per player, and a
+  bare 5-segment health bar (20% per segment) floats above each head in
+  proximity (template: `server/config/tab/config.yml`).
 
 ```bash
 make plugins-sync-dry-run   # resolve versions, print plan

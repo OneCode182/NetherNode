@@ -3,7 +3,8 @@
 # missing keys with defaults on boot.
 #
 # View-only info for every player (op or not):
-#   - tablist: hearts + numeric ping + XP level next to each name
+#   - tablist: "❤ <health> Lv <xp> | (x, y, z) | <ping>ms" next to each name
+#     (the vanilla signal-bars icon stays rightmost, so ping ms sits beside it)
 #   - below name (proximity): bare 5-segment health bar (1 segment = 20% = 4 HP),
 #     no numbers, no heart icons
 
@@ -22,13 +23,13 @@ scoreboard-teams:
   case-sensitive-sorting: true
   can-see-friendly-invisibles: false
 
-# Health + ping + XP level inside the TAB list.
-# %player_level% comes from PlaceholderAPI's Player expansion (both managed
-# by plugins-sync).
+# Health + XP level + coordinates + ping inside the TAB list.
+# %player_level% and %player_x/y/z% come from PlaceholderAPI's Player
+# expansion (both managed by plugins-sync).
 playerlist-objective:
   enabled: true
   value: "%health%"
-  fancy-value: "&c❤ %health% &8| &7%ping%ms &8| &aLv %player_level%"
+  fancy-value: "&c❤ %health% &aLv %player_level% &8| &7(%player_x%, %player_y%, %player_z%) &8| &f%ping%ms"
   title: "Info" # Only visible on Bedrock Edition
   render-type: INTEGER
 
