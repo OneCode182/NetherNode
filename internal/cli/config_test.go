@@ -135,18 +135,80 @@ func TestLoadConfigFrom_RCONPasswordEnvWinsOverEnvFile(t *testing.T) {
 		}
 		return ""
 	}
-	readFileCalled := false
 	readFile := func(name string) ([]byte, error) {
-		readFileCalled = true
-		return []byte("MINECRAFT_RCON_PASSWORD=from-dotenv\n"), nil
+		return []byte("MINECRAFT_RCON_PASSWORD=from-dotenv\nMINECRAFT_MEMORY=ignored\n"), nil
 	}
 
 	cfg := LoadConfigFrom(getenv, readFile)
 	if cfg.RCONPassword != "from-process-env" {
 		t.Fatalf("RCONPassword = %q, want process-env value", cfg.RCONPassword)
 	}
-	if readFileCalled {
-		t.Fatal(".env file should not be read when MINECRAFT_RCON_PASSWORD is already set")
+}
+
+func TestLoadConfigFromRoot_ResolvesPathsAndDotenv(t *testing.T) {
+	getenv := func(k string) string { return "" }
+	readFile := func(name string) ([]byte, error) {
+		if name != "/opt/nethernode/app/.env" {
+			return nil, errors.New("unexpected path: " + name)
+		}
+		return []byte("MINECRAFT_DATA_DIR=/opt/nethernode/data/minecraft\nMINECRAFT_RCON_PASSWORD=host-secret\n"), nil
+	}
+
+	cfg := LoadConfigFromRoot("/opt/nethernode/app", getenv, readFile)
+	if cfg.ComposeFile != "/opt/nethernode/app/compose.yaml" {
+		t.Fatalf("ComposeFile = %q, want root-resolved", cfg.ComposeFile)
+	}
+	if cfg.DataDir != "/opt/nethernode/data/minecraft" {
+		t.Fatalf("DataDir = %q, want absolute value from .env untouched", cfg.DataDir)
+	}
+	if cfg.BackupDest != "/opt/nethernode/app/backups" {
+		t.Fatalf("BackupDest = %q, want root-resolved default", cfg.BackupDest)
+	}
+	if cfg.RCONPassword != "host-secret" {
+		t.Fatalf("RCONPassword = %q, want value from root .env", cfg.RCONPassword)
+	}
+}
+
+func TestResolveRoot(t *testing.T) {
+	cases := []struct {
+		name   string
+		env    map[string]string
+		exists map[string]bool
+		wd     string
+		want   string
+	}{
+		{
+			name: "explicit NETHERNODE_ROOT wins",
+			env:  map[string]string{"NETHERNODE_ROOT": "/srv/app"},
+			want: "/srv/app",
+		},
+		{
+			name:   "walks up from CWD to compose.yaml",
+			exists: map[string]bool{"/opt/nethernode/app/compose.yaml": true},
+			wd:     "/opt/nethernode/app/ops",
+			want:   "/opt/nethernode/app",
+		},
+		{
+			name:   "falls back to deployed root from unrelated CWD",
+			exists: map[string]bool{"/opt/nethernode/app/compose.yaml": true},
+			wd:     "/home/ec2-user",
+			want:   "/opt/nethernode/app",
+		},
+		{
+			name: "empty when nothing matches",
+			wd:   "/home/ec2-user",
+			want: "",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			getenv := func(k string) string { return tc.env[k] }
+			exists := func(p string) bool { return tc.exists[p] }
+			getwd := func() (string, error) { return tc.wd, nil }
+			if got := ResolveRoot(getenv, exists, getwd); got != tc.want {
+				t.Fatalf("ResolveRoot = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 

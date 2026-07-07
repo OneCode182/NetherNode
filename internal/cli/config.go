@@ -6,6 +6,7 @@ package cli
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -65,47 +66,101 @@ type getenvFunc func(key string) string
 // tested without touching the real filesystem.
 type readFileFunc func(name string) ([]byte, error)
 
-// LoadConfig builds a Config from the real process environment, falling
-// back to a ".env" file (or ENV_FILE, if set) for MINECRAFT_RCON_PASSWORD
-// when it is not already exported.
+// deployedRoot is where EC2 hosts keep the app checkout (see infra
+// user-data); the CLI falls back to it so `nethernode` works from any CWD.
+const deployedRoot = "/opt/nethernode/app"
+
+// LoadConfig builds a Config from the real process environment plus the app
+// root's ".env" file (env wins). The app root is NETHERNODE_ROOT when set,
+// otherwise the nearest ancestor of the CWD containing compose.yaml,
+// otherwise /opt/nethernode/app when it holds a compose.yaml.
 func LoadConfig() Config {
-	return LoadConfigFrom(os.Getenv, os.ReadFile)
+	exists := func(p string) bool {
+		_, err := os.Stat(p)
+		return err == nil
+	}
+	root := ResolveRoot(os.Getenv, exists, os.Getwd)
+	return LoadConfigFromRoot(root, os.Getenv, os.ReadFile)
 }
 
-// LoadConfigFrom builds a Config using the supplied getenv/readFile
-// functions, so tests can inject fakes instead of the real environment/disk.
+// ResolveRoot picks the directory that relative paths (compose.yaml,
+// ./data/minecraft, ./backups, .env) resolve against. Empty means "use the
+// CWD as-is" (local-dev behavior).
+func ResolveRoot(getenv getenvFunc, exists func(string) bool, getwd func() (string, error)) string {
+	if root := getenv("NETHERNODE_ROOT"); root != "" {
+		return root
+	}
+	if wd, err := getwd(); err == nil {
+		dir := wd
+		for i := 0; i < 16; i++ {
+			if exists(filepath.Join(dir, "compose.yaml")) {
+				return dir
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+	if exists(filepath.Join(deployedRoot, "compose.yaml")) {
+		return deployedRoot
+	}
+	return ""
+}
+
+// LoadConfigFrom builds a Config with no app root, using the supplied
+// getenv/readFile functions. Kept for compatibility; see LoadConfigFromRoot.
 func LoadConfigFrom(getenv getenvFunc, readFile readFileFunc) Config {
-	cfg := Config{
-		ContainerName: firstNonEmpty(getenv("MINECRAFT_CONTAINER_NAME"), "nethernode-minecraft"),
-		ComposeFile:   firstNonEmpty(getenv("COMPOSE_FILE"), "compose.yaml"),
-		DataDir:       firstNonEmpty(getenv("MINECRAFT_DATA_DIR"), "./data/minecraft"),
+	return LoadConfigFromRoot("", getenv, readFile)
+}
 
-		BackupDest:      firstNonEmpty(getenv("BACKUP_DEST"), "./backups"),
-		BackupRetention: firstPositiveInt(getenv("BACKUP_RETENTION"), 5),
-		BackupLabel:     firstNonEmpty(getenv("BACKUP_LABEL"), "minecraft"),
-
-		RCONHost:     "127.0.0.1",
-		RCONPort:     firstNonEmpty(getenv("MINECRAFT_RCON_PORT"), "25575"),
-		RCONPassword: getenv("MINECRAFT_RCON_PASSWORD"),
-		RCONTimeout:  5 * time.Second,
-
-		PublicHost:  firstNonEmpty(getenv("MINECRAFT_PUBLIC_HOST"), "localhost"),
-		JavaPort:    firstNonEmpty(getenv("MINECRAFT_PORT"), "25565"),
-		BedrockPort: firstNonEmpty(getenv("MINECRAFT_BEDROCK_PORT"), "19132"),
-
-		ScriptDir: firstNonEmpty(getenv("NETHERNODE_SCRIPT_DIR"), "/opt/nethernode/scripts"),
+// LoadConfigFromRoot builds a Config resolving relative paths against root
+// (when non-empty) and reading root's ".env" (or ENV_FILE) as a fallback for
+// every setting: process env wins, then .env, then defaults.
+func LoadConfigFromRoot(root string, getenv getenvFunc, readFile readFileFunc) Config {
+	dotenv := map[string]string{}
+	envFile := firstNonEmpty(getenv("ENV_FILE"), rootJoin(root, ".env"))
+	if body, err := readFile(envFile); err == nil {
+		dotenv = parseDotenv(body)
+	}
+	lookup := func(key string) string {
+		if v := getenv(key); v != "" {
+			return v
+		}
+		return dotenv[key]
 	}
 
-	if cfg.RCONPassword == "" {
-		envFile := firstNonEmpty(getenv("ENV_FILE"), ".env")
-		if body, err := readFile(envFile); err == nil {
-			if v, ok := parseDotenv(body)["MINECRAFT_RCON_PASSWORD"]; ok {
-				cfg.RCONPassword = v
-			}
-		}
+	cfg := Config{
+		ContainerName: firstNonEmpty(lookup("MINECRAFT_CONTAINER_NAME"), "nethernode-minecraft"),
+		ComposeFile:   rootJoin(root, firstNonEmpty(lookup("COMPOSE_FILE"), "compose.yaml")),
+		DataDir:       rootJoin(root, firstNonEmpty(lookup("MINECRAFT_DATA_DIR"), "./data/minecraft")),
+
+		BackupDest:      rootJoin(root, firstNonEmpty(lookup("BACKUP_DEST"), "./backups")),
+		BackupRetention: firstPositiveInt(lookup("BACKUP_RETENTION"), 5),
+		BackupLabel:     firstNonEmpty(lookup("BACKUP_LABEL"), "minecraft"),
+
+		RCONHost:     "127.0.0.1",
+		RCONPort:     firstNonEmpty(lookup("MINECRAFT_RCON_PORT"), "25575"),
+		RCONPassword: lookup("MINECRAFT_RCON_PASSWORD"),
+		RCONTimeout:  5 * time.Second,
+
+		PublicHost:  firstNonEmpty(lookup("MINECRAFT_PUBLIC_HOST"), "localhost"),
+		JavaPort:    firstNonEmpty(lookup("MINECRAFT_PORT"), "25565"),
+		BedrockPort: firstNonEmpty(lookup("MINECRAFT_BEDROCK_PORT"), "19132"),
+
+		ScriptDir: firstNonEmpty(lookup("NETHERNODE_SCRIPT_DIR"), "/opt/nethernode/scripts"),
 	}
 
 	return cfg
+}
+
+// rootJoin resolves path against root when root is set and path is relative.
+func rootJoin(root, path string) string {
+	if root == "" || path == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(root, path)
 }
 
 // parseDotenv does a minimal KEY=VALUE parse of a ".env"-style file: blank

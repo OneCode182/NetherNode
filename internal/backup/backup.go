@@ -59,6 +59,15 @@ func Run(opts Options, now time.Time) (*Result, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("backup: source dir is not a directory: %s", opts.SourceDir)
 	}
+	entries, err := os.ReadDir(opts.SourceDir)
+	if err != nil {
+		return nil, fmt.Errorf("backup: read source dir: %w", err)
+	}
+	if len(entries) == 0 {
+		// An empty source almost always means a mis-resolved data dir; a
+		// "successful" empty archive would look like a real backup.
+		return nil, fmt.Errorf("backup: source dir is empty, refusing to create an empty archive: %s", opts.SourceDir)
+	}
 
 	if err := os.MkdirAll(opts.DestDir, 0o755); err != nil {
 		return nil, fmt.Errorf("backup: create dest dir: %w", err)
