@@ -42,7 +42,8 @@ run_script() {
   shift
 
   if [[ ! -x "${script}" ]]; then
-    local fallback="${SELF_DIR}/$(basename "${script}")"
+    local fallback
+    fallback="${SELF_DIR}/$(basename "${script}")"
     if [[ -x "${fallback}" ]]; then
       script="${fallback}"
     else
