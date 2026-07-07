@@ -12,3 +12,16 @@ jobs:
       - name: Validate repository foundation and scripts
         run: |
           make validate
+
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Vet, test and build Go CLI
+        run: |
+          go vet ./...
+          go test ./...
+          go build ./cmd/nethernode
