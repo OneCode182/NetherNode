@@ -1,0 +1,99 @@
+# NetherNode TAB template. Installed by ops/plugins-sync.sh only when
+# /data/plugins/TAB/config.yml is missing; TAB's config updater adds any
+# missing keys with defaults on boot.
+#
+# View-only info for every player (op or not):
+#   - tablist: hearts + numeric ping next to each name
+#   - below name: 10-segment health bar (1 segment = 10% = 2 HP) + hearts
+
+header-footer:
+  enabled: false
+
+tablist-name-formatting:
+  enabled: true
+
+scoreboard-teams:
+  enabled: true
+  enable-collision: true
+  invisible-nametags: false
+  sorting-types:
+    - "PLACEHOLDER_A_TO_Z:%player%"
+  case-sensitive-sorting: true
+  can-see-friendly-invisibles: false
+
+# Health + ping inside the TAB list.
+playerlist-objective:
+  enabled: true
+  value: "%health%"
+  fancy-value: "&c❤ %health% &8| &7%ping%ms"
+  title: "Info" # Only visible on Bedrock Edition
+  render-type: INTEGER
+
+# Health bar under the name: 10 segments, each = 10% of full health (20 HP).
+belowname-objective:
+  enabled: true
+  value: "%health%"
+  fancy-value: "%condition:healthbar% &7%health%&c❤"
+  fancy-value-default: "NPC"
+  title: "&c❤"
+
+conditions:
+  healthbar:
+    conditions:
+      - "%health%>=19"
+    yes: "&a██████████"
+    no: "%condition:hb9%"
+  hb9:
+    conditions:
+      - "%health%>=17"
+    yes: "&a█████████&8█"
+    no: "%condition:hb8%"
+  hb8:
+    conditions:
+      - "%health%>=15"
+    yes: "&a████████&8██"
+    no: "%condition:hb7%"
+  hb7:
+    conditions:
+      - "%health%>=13"
+    yes: "&a███████&8███"
+    no: "%condition:hb6%"
+  hb6:
+    conditions:
+      - "%health%>=11"
+    yes: "&e██████&8████"
+    no: "%condition:hb5%"
+  hb5:
+    conditions:
+      - "%health%>=9"
+    yes: "&e█████&8█████"
+    no: "%condition:hb4%"
+  hb4:
+    conditions:
+      - "%health%>=7"
+    yes: "&e████&8██████"
+    no: "%condition:hb3%"
+  hb3:
+    conditions:
+      - "%health%>=5"
+    yes: "&c███&8███████"
+    no: "%condition:hb2%"
+  hb2:
+    conditions:
+      - "%health%>=3"
+    yes: "&c██&8████████"
+    no: "%condition:hb1%"
+  hb1:
+    conditions:
+      - "%health%>=1"
+    yes: "&c█&8█████████"
+    no: "&8██████████"
+
+prevent-spectator-effect:
+  enabled: false
+
+bossbar:
+  enabled: false
+
+scoreboard:
+  enabled: false

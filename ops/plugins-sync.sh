@@ -6,8 +6,12 @@ MANIFEST="${PLUGINS_MANIFEST:-${PROJECT_ROOT}/server/plugins.manifest}"
 DATA_DIR="${MINECRAFT_DATA_DIR:-${PROJECT_ROOT}/data/minecraft}"
 PLUGINS_DIR="${MINECRAFT_PLUGINS_DIR:-${DATA_DIR}/plugins}"
 RUNTIME_ENV="${RUNTIME_ENV:-${PROJECT_ROOT}/server/runtime.env}"
-GEYSER_CONFIG_TEMPLATE="${GEYSER_CONFIG_TEMPLATE:-${PROJECT_ROOT}/server/config/geyser/config.yml}"
-GEYSER_CONFIG_TARGET="${PLUGINS_DIR}/Geyser-Spigot/config.yml"
+# Plugin config templates installed only when the live config is missing.
+# Format: <template path>|<target path>
+CONFIG_TEMPLATES=(
+  "${PROJECT_ROOT}/server/config/geyser/config.yml|${PLUGINS_DIR}/Geyser-Spigot/config.yml"
+  "${PROJECT_ROOT}/server/config/tab/config.yml|${PLUGINS_DIR}/TAB/config.yml"
+)
 STATE_FILE="${PLUGINS_DIR}/.nethernode-plugins.state"
 MODRINTH_API="${MODRINTH_API:-https://api.modrinth.com/v2}"
 GEYSERMC_API="${GEYSERMC_API:-https://download.geysermc.org/v2}"
@@ -257,13 +261,17 @@ while IFS='|' read -r name source project channel pin; do
   fi
 done < <(read_manifest)
 
-if [[ -f "${GEYSER_CONFIG_TEMPLATE}" && ! -f "${GEYSER_CONFIG_TARGET}" ]]; then
-  log "Geyser config missing: installing template -> ${GEYSER_CONFIG_TARGET}"
-  if [[ "${DRY_RUN}" != "true" ]]; then
-    mkdir -p "$(dirname "${GEYSER_CONFIG_TARGET}")"
-    cp "${GEYSER_CONFIG_TEMPLATE}" "${GEYSER_CONFIG_TARGET}"
+for spec in "${CONFIG_TEMPLATES[@]}"; do
+  template="${spec%%|*}"
+  target="${spec##*|}"
+  if [[ -f "${template}" && ! -f "${target}" ]]; then
+    log "Config missing: installing template -> ${target}"
+    if [[ "${DRY_RUN}" != "true" ]]; then
+      mkdir -p "$(dirname "${target}")"
+      cp "${template}" "${target}"
+    fi
   fi
-fi
+done
 
 # The container runs as UID/GID 1000; when sync runs as root (sudo on EC2),
 # root-owned plugin files would block plugins from writing their own configs.
