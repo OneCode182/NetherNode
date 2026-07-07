@@ -265,6 +265,12 @@ if [[ -f "${GEYSER_CONFIG_TEMPLATE}" && ! -f "${GEYSER_CONFIG_TARGET}" ]]; then
   fi
 fi
 
+# The container runs as UID/GID 1000; when sync runs as root (sudo on EC2),
+# root-owned plugin files would block plugins from writing their own configs.
+if [[ "${DRY_RUN}" != "true" && "$(id -u)" == "0" && -d "${PLUGINS_DIR}" ]]; then
+  chown -R "${MINECRAFT_UID:-1000}:${MINECRAFT_GID:-1000}" "${PLUGINS_DIR}"
+fi
+
 if (( FAILURES > 0 )); then
   log "Plugin sync finished with ${FAILURES} failure(s)."
   exit 1
