@@ -467,3 +467,12 @@ Append step evidence here.
   - `dynamic-workflows-nethernode-v2-paper-go.workflow.md` now specializes `dynamic-workflows-claude-code.workflow.md` (it pointed to the Codex contract) and the stale "resume from S5" note was replaced with the closed S0-S11 state.
   - `ci.yml` gains a `go` job (vet/test/build on PR/push): Go unit tests previously ran only locally; `image.yml` covered build only. Validate/build only; no-reset intact.
 - Known accepted deviation: extra commit `40c9d6a` shares the S3 subject (gitignore-only mis-commit), documented in `.agents/memory/mistakes.md`; history is local-only (never pushed), squashable before push if desired.
+
+### E2E aux server (2026-07-07)
+
+- Provisioned `nethernode-aux-minecraft` (`i-01e3db31b31d1d1c1`, `3.80.254.187`, c7i-flex.large, us-east-1) with the SAME Terraform module, workspace `aux` + gitignored `infra/aux.tfvars`: plan showed 6 add / 0 change / 0 destroy; dev state untouched. `nethernode-dev-minecraft` (`i-02d96de3fcb0114c7`) only ever read via describe; no lifecycle workflow dispatched.
+- Branch `dev` pushed (V2 commits + fixes); CI on push = validate/build only, green (`ci` incl. new `go` job, `infra-validate`).
+- SSH keys: `/home/onecode/lab/ec2-nethernode-v2/nethernode-aux-minecraft` (600) + `.pub` (644); SG opens 22 via new opt-in `enable_ssh_ingress` (default false, dev unchanged).
+- Live bugs found by the E2E and fixed in repo: AL2023 lacks `docker compose` plugin (user-data now installs it); root-owned synced plugins blocked Geyser config writes (`plugins-sync.sh` now chowns to container UID); RCON not reachable from host (compose now publishes `127.0.0.1:25575`); Go RCON client pipelined a trailer packet that Paper drops (rewritten, live-verified `save-server` + `status` with `rcon: ok`).
+- Aux-only divergence: Geyser 2.10.1 crashes on Paper `26.2` (incendo/cloud reflection, upstream gap) -> aux runs `MINECRAFT_VERSION=26.1.2` (local `server/runtime.env` edit on instance, fresh world). Crossplay matrix on aux: Java 26.2 client via ViaVersion, older Java via ViaBackwards, Bedrock via Geyser/Floodgate. Repo default stays `26.2`.
+- Final live evidence: 4 plugins enabled; `Started Geyser on UDP port 19132`; external mcstatus `java online=true "Paper 26.1.2"`, `bedrock online=true`; `nethernode status` aggregates container/rcon/java/bedrock/backups/disk on host.
