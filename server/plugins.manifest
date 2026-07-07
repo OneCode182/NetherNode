@@ -1,5 +1,7 @@
 # NetherNode managed Paper crossplay plugins.
-# Format: name|source|project|channel|pin
+# Format: name|source|project|channel|pin[|optional]
+#   optional: skip with a note (instead of failing the sync) when no build
+#             matches MINECRAFT_VERSION yet.
 #   source=geysermc  project on https://download.geysermc.org/v2, channel = platform.
 #   source=modrinth  project = slug, channel = loader; resolves newest version
 #                    matching MINECRAFT_VERSION from server/runtime.env.
@@ -10,3 +12,6 @@ viaversion|modrinth|viaversion|paper|latest
 viabackwards|modrinth|viabackwards|paper|latest
 tab|modrinth|tab-was-taken|paper|latest
 placeholderapi|modrinth|placeholderapi|paper|latest
+bluemap|modrinth|bluemap|paper|latest
+chunky|modrinth|chunky|paper|latest
+huskhomes|modrinth|huskhomes|paper|latest|optional

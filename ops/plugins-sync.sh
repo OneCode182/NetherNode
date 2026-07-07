@@ -11,6 +11,7 @@ RUNTIME_ENV="${RUNTIME_ENV:-${PROJECT_ROOT}/server/runtime.env}"
 CONFIG_TEMPLATES=(
   "${PROJECT_ROOT}/server/config/geyser/config.yml|${PLUGINS_DIR}/Geyser-Spigot/config.yml"
   "${PROJECT_ROOT}/server/config/tab/config.yml|${PLUGINS_DIR}/TAB/config.yml"
+  "${PROJECT_ROOT}/server/config/bluemap/core.conf|${PLUGINS_DIR}/BlueMap/core.conf"
 )
 
 # PlaceholderAPI eCloud expansions (by expansion name) installed when
@@ -226,7 +227,7 @@ FAILURES=0
 log "Syncing managed plugins (Minecraft ${MINECRAFT_VERSION}) -> ${PLUGINS_DIR}"
 [[ "${DRY_RUN}" == "true" ]] && log "Dry-run: nothing will be written."
 
-while IFS='|' read -r name source project channel pin; do
+while IFS='|' read -r name source project channel pin flags; do
   resolved=""
   case "${source}" in
     modrinth)
@@ -243,6 +244,10 @@ while IFS='|' read -r name source project channel pin; do
   esac
 
   if [[ -z "${resolved}" ]]; then
+    if [[ "${flags}" == "optional" ]]; then
+      log "${name}: skip (no build for Minecraft ${MINECRAFT_VERSION} yet; marked optional)"
+      continue
+    fi
     echo "Could not resolve ${name} (source=${source}, project=${project}, channel=${channel}, mc=${MINECRAFT_VERSION})" >&2
     FAILURES=$((FAILURES + 1))
     continue

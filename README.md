@@ -65,6 +65,13 @@ Managed Paper plugin stack, declared in `server/plugins.manifest` and synced by
   key persists at `/data/plugins/floodgate/key.pem`.
 - ViaVersion: newer Java clients on an older server protocol.
 - ViaBackwards: older Java clients on a newer server protocol.
+- BlueMap: 3D web map of the world at `http://<host>:8100` (compose maps the
+  port; infra opens it via opt-in `enable_bluemap_ingress`). First render
+  takes a while after install.
+- Chunky: pre-generates chunks around spawn (`chunky radius 1500` +
+  `chunky start` via console/RCON) so exploration does not hit generation lag.
+- HuskHomes: `/sethome`, `/tpa`, `/warp`, `/back` quality-of-life commands
+  (no `26.2` build published yet — resolves on `26.1.x`, same wait as Geyser).
 - TAB + PlaceholderAPI (Player expansion): view-only player info for everyone
   — tab list shows `❤ health Lv xp | (x, y, z) | ping ms` per player, and a
   bare 5-segment health bar (20% per segment) floats above each head in

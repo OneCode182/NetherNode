@@ -33,5 +33,7 @@ services:
       - "${MINECRAFT_BIND_ADDR:-0.0.0.0}:${MINECRAFT_BEDROCK_PORT:-19132}:19132/udp"
       # RCON stays loopback-only so the host nethernode CLI can reach it.
       - "127.0.0.1:${MINECRAFT_RCON_PORT:-25575}:25575"
+      # BlueMap web map UI.
+      - "${MINECRAFT_BIND_ADDR:-0.0.0.0}:${BLUEMAP_PORT:-8100}:8100"
     restart: unless-stopped
     tty: true

@@ -214,6 +214,18 @@ variable "ssh_public_key" {
   default     = ""
 }
 
+variable "enable_bluemap_ingress" {
+  description = "Open the BlueMap web map port on the app security group."
+  type        = bool
+  default     = false
+}
+
+variable "bluemap_web_port" {
+  description = "BlueMap web UI TCP port."
+  type        = number
+  default     = 8100
+}
+
 variable "enable_ssh_ingress" {
   description = "Open TCP 22 on the app security group. Keep false for SSM-only environments (dev default)."
   type        = bool

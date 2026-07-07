@@ -58,6 +58,17 @@ resource "aws_security_group" "minecraft" {
   }
 
   dynamic "ingress" {
+    for_each = var.enable_bluemap_ingress ? [1] : []
+    content {
+      description = "BlueMap web map"
+      from_port   = var.bluemap_web_port
+      to_port     = var.bluemap_web_port
+      protocol    = "tcp"
+      cidr_blocks = var.minecraft_ingress_cidrs
+    }
+  }
+
+  dynamic "ingress" {
     for_each = var.enable_ssh_ingress ? [1] : []
     content {
       description = "SSH (aux/test environments only)"
