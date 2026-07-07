@@ -476,3 +476,11 @@ Append step evidence here.
 - Live bugs found by the E2E and fixed in repo: AL2023 lacks `docker compose` plugin (user-data now installs it); root-owned synced plugins blocked Geyser config writes (`plugins-sync.sh` now chowns to container UID); RCON not reachable from host (compose now publishes `127.0.0.1:25575`); Go RCON client pipelined a trailer packet that Paper drops (rewritten, live-verified `save-server` + `status` with `rcon: ok`).
 - Aux-only divergence: Geyser 2.10.1 crashes on Paper `26.2` (incendo/cloud reflection, upstream gap) -> aux runs `MINECRAFT_VERSION=26.1.2` (local `server/runtime.env` edit on instance, fresh world). Crossplay matrix on aux: Java 26.2 client via ViaVersion, older Java via ViaBackwards, Bedrock via Geyser/Floodgate. Repo default stays `26.2`.
 - Final live evidence: 4 plugins enabled; `Started Geyser on UDP port 19132`; external mcstatus `java online=true "Paper 26.1.2"`, `bedrock online=true`; `nethernode status` aggregates container/rcon/java/bedrock/backups/disk on host.
+
+### Aux world port from dev backup (2026-07-07)
+
+- Source: local backup `minecraft-20260707T045930Z.tar.gz` (newest, 235M) from `/home/onecode/lab/nethernode-dev-backups`; dev instance untouched.
+- Chunker CLI 1.18.1 converted `world/` `JAVA_26_2 -> JAVA_26_1_2` (DataVersion 4903 -> 4790, 3.5s); warnings: unmapped WITCH + EXPERIENCE_ORB entities dropped (cosmetic).
+- Hand-ported what Chunker skips: `players/` (4 players), missing `data/minecraft/*.dat` (scoreboard, wandering_trader, ...), all NBT DataVersion byte-patched to 4790; ops/whitelist/usercache/ban lists copied from backup root.
+- Aux swap: fresh-world backup taken (retention 3), stop, world replaced, chown 1000, start: `Done preparing level "world"` with zero datafixer errors; seed `-343522682` (dev's pinned seed); Sirius182 op intact; external mcstatus java+bedrock online; `bluemap purge world` issued for re-render.
+- Result: dev's world progress now plays on aux `26.1.2` with full Java+Bedrock crossplay; upgrade back to `26.2` is native once Geyser ships support. Procedure documented in `minecraft-runtime.architecture.md`.

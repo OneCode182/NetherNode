@@ -30,6 +30,28 @@
 - Keep `online-mode=false` for the first Paper migration when the existing server used offline UUIDs. Moving to `online-mode=true` needs a separate UUID mapping migration; otherwise inventories, XP, locations, stats, advancements, and admin identities can drift.
 - Rollback path: stop server, restore known-good backup into `/opt/nethernode/data/minecraft` with explicit `--target` and `--force`, then start and verify join/save.
 
+## World Version Downgrade (Chunker)
+
+Minecraft never downgrades worlds natively; use Chunker
+(https://github.com/HiveGamesOSS/Chunker) on a COPY when a world from a newer
+MC version must run on an older server (e.g. `26.2` world onto the
+Geyser-supported `26.1.2`). Procedure proven 2026-07-07 (dev world -> aux):
+
+1. Extract the newest backup locally; never work on live data.
+2. `java -jar chunker-cli.jar -i world -f JAVA_26_1_2 -o output-world`
+   (verify `level.dat` DataVersion dropped, e.g. 4903 -> 4790).
+3. Chunker does NOT convert `players/`, `datapacks/`, or several
+   `data/minecraft/*.dat` (scoreboard, wandering trader, ...): copy them from
+   the source world and byte-patch their NBT `DataVersion` int to the target
+   (safe across adjacent minor versions).
+4. Known losses: unmapped entities are dropped (observed: WITCH,
+   EXPERIENCE_ORB); advancements/stats have limited conversion.
+5. On the target host: backup current world, stop, swap `world/`, copy
+   `ops.json`/whitelist/usercache/ban lists, `chown -R 1000:1000`, start.
+6. Verify: `Done preparing level` with no datafixer errors, `seed` matches,
+   ops intact, mcstatus java+bedrock online, then `bluemap purge <map>`.
+7. Upgrading back (older -> newer) is native: just bump `MINECRAFT_VERSION`.
+
 ## Local Workflow
 
 1. Copy `.env.example` to `.env`.
