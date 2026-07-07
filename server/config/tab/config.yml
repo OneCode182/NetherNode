@@ -3,8 +3,9 @@
 # missing keys with defaults on boot.
 #
 # View-only info for every player (op or not):
-#   - tablist: hearts + numeric ping next to each name
-#   - below name: 10-segment health bar (1 segment = 10% = 2 HP) + hearts
+#   - tablist: hearts + numeric ping + XP level next to each name
+#   - below name (proximity): bare 5-segment health bar (1 segment = 20% = 4 HP),
+#     no numbers, no heart icons
 
 header-footer:
   enabled: false
@@ -21,73 +22,51 @@ scoreboard-teams:
   case-sensitive-sorting: true
   can-see-friendly-invisibles: false
 
-# Health + ping inside the TAB list.
+# Health + ping + XP level inside the TAB list.
+# %player_level% comes from PlaceholderAPI's Player expansion (both managed
+# by plugins-sync).
 playerlist-objective:
   enabled: true
   value: "%health%"
-  fancy-value: "&c❤ %health% &8| &7%ping%ms"
+  fancy-value: "&c❤ %health% &8| &7%ping%ms &8| &aLv %player_level%"
   title: "Info" # Only visible on Bedrock Edition
   render-type: INTEGER
 
-# Health bar under the name: 10 segments, each = 10% of full health (20 HP).
+# Proximity view under the name: bare 5-segment bar, 1 segment = 20% (4 HP).
+# No numbers, no heart icons here by design; the tablist carries the details.
 belowname-objective:
   enabled: true
   value: "%health%"
-  fancy-value: "%condition:healthbar% &7%health%&c❤"
+  fancy-value: "%condition:healthbar%"
   fancy-value-default: "NPC"
-  title: "&c❤"
+  title: "HP" # Only visible to pre-1.20.3 clients, next to the raw number.
 
 conditions:
   healthbar:
     conditions:
-      - "%health%>=19"
-    yes: "&a██████████"
-    no: "%condition:hb9%"
-  hb9:
-    conditions:
       - "%health%>=17"
-    yes: "&a█████████&8█"
-    no: "%condition:hb8%"
-  hb8:
-    conditions:
-      - "%health%>=15"
-    yes: "&a████████&8██"
-    no: "%condition:hb7%"
-  hb7:
-    conditions:
-      - "%health%>=13"
-    yes: "&a███████&8███"
-    no: "%condition:hb6%"
-  hb6:
-    conditions:
-      - "%health%>=11"
-    yes: "&e██████&8████"
-    no: "%condition:hb5%"
-  hb5:
-    conditions:
-      - "%health%>=9"
-    yes: "&e█████&8█████"
+    yes: "&a█████"
     no: "%condition:hb4%"
   hb4:
     conditions:
-      - "%health%>=7"
-    yes: "&e████&8██████"
+      - "%health%>=13"
+    yes: "&a████&8█"
     no: "%condition:hb3%"
   hb3:
     conditions:
-      - "%health%>=5"
-    yes: "&c███&8███████"
+      - "%health%>=9"
+    yes: "&e███&8██"
     no: "%condition:hb2%"
   hb2:
     conditions:
-      - "%health%>=3"
-    yes: "&c██&8████████"
+      - "%health%>=5"
+    yes: "&c██&8███"
     no: "%condition:hb1%"
   hb1:
     conditions:
       - "%health%>=1"
-    yes: "&c█&8█████████"
-    no: "&8██████████"
+    yes: "&c█&8████"
+    no: "&8█████"
 
 prevent-spectator-effect:
   enabled: false

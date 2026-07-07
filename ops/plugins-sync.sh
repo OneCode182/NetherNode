@@ -12,6 +12,12 @@ CONFIG_TEMPLATES=(
   "${PROJECT_ROOT}/server/config/geyser/config.yml|${PLUGINS_DIR}/Geyser-Spigot/config.yml"
   "${PROJECT_ROOT}/server/config/tab/config.yml|${PLUGINS_DIR}/TAB/config.yml"
 )
+
+# PlaceholderAPI eCloud expansions installed when missing.
+# Format: <jar name>|<download url>
+PAPI_EXPANSIONS=(
+  "player.jar|https://api.extendedclip.com/v2/download/player/latest/"
+)
 STATE_FILE="${PLUGINS_DIR}/.nethernode-plugins.state"
 MODRINTH_API="${MODRINTH_API:-https://api.modrinth.com/v2}"
 GEYSERMC_API="${GEYSERMC_API:-https://download.geysermc.org/v2}"
@@ -269,6 +275,20 @@ for spec in "${CONFIG_TEMPLATES[@]}"; do
     if [[ "${DRY_RUN}" != "true" ]]; then
       mkdir -p "$(dirname "${target}")"
       cp "${template}" "${target}"
+    fi
+  fi
+done
+
+for spec in "${PAPI_EXPANSIONS[@]}"; do
+  jar="${spec%%|*}"
+  url="${spec##*|}"
+  target="${PLUGINS_DIR}/PlaceholderAPI/expansions/${jar}"
+  if [[ ! -f "${target}" ]]; then
+    log "PAPI expansion missing: installing ${jar}"
+    if [[ "${DRY_RUN}" != "true" ]]; then
+      mkdir -p "$(dirname "${target}")"
+      curl -fsSL -o "${target}.tmp" "${url}"
+      mv "${target}.tmp" "${target}"
     fi
   fi
 done

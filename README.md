@@ -65,8 +65,9 @@ Managed Paper plugin stack, declared in `server/plugins.manifest` and synced by
   key persists at `/data/plugins/floodgate/key.pem`.
 - ViaVersion: newer Java clients on an older server protocol.
 - ViaBackwards: older Java clients on a newer server protocol.
-- TAB: view-only player info for everyone — hearts + numeric ping in the tab
-  list, and a 10-segment health bar (10% per segment) under each name
+- TAB + PlaceholderAPI (Player expansion): view-only player info for everyone
+  — hearts, numeric ping and XP level in the tab list, and a bare 5-segment
+  health bar (20% per segment) above each head in proximity
   (template: `server/config/tab/config.yml`).
 
 ```bash
