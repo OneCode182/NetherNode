@@ -21,7 +21,7 @@ func TestLoadConfigFrom_Defaults(t *testing.T) {
 		RCONHost:        "127.0.0.1",
 		RCONPort:        "25575",
 		RCONPassword:    "",
-		PublicHost:      "localhost",
+		StatusHost:      "",
 		JavaPort:        "25565",
 		BedrockPort:     "19132",
 	}
@@ -34,7 +34,7 @@ func TestLoadConfigFrom_Defaults(t *testing.T) {
 		cfg.RCONHost != want.RCONHost ||
 		cfg.RCONPort != want.RCONPort ||
 		cfg.RCONPassword != want.RCONPassword ||
-		cfg.PublicHost != want.PublicHost ||
+		cfg.StatusHost != want.StatusHost ||
 		cfg.JavaPort != want.JavaPort ||
 		cfg.BedrockPort != want.BedrockPort {
 		t.Fatalf("LoadConfigFrom() = %+v, want %+v", cfg, want)
@@ -54,7 +54,7 @@ func TestLoadConfigFrom_EnvOverrides(t *testing.T) {
 		"BACKUP_LABEL":             "world",
 		"MINECRAFT_RCON_PORT":      "26575",
 		"MINECRAFT_RCON_PASSWORD":  "from-env",
-		"MINECRAFT_PUBLIC_HOST":    "play.example.com",
+		"MINECRAFT_STATUS_HOST":    "play.example.com",
 		"MINECRAFT_PORT":           "26565",
 		"MINECRAFT_BEDROCK_PORT":   "20132",
 	}
@@ -75,7 +75,7 @@ func TestLoadConfigFrom_EnvOverrides(t *testing.T) {
 		{"BackupLabel", cfg.BackupLabel, "world"},
 		{"RCONPort", cfg.RCONPort, "26575"},
 		{"RCONPassword", cfg.RCONPassword, "from-env"},
-		{"PublicHost", cfg.PublicHost, "play.example.com"},
+		{"StatusHost", cfg.StatusHost, "play.example.com"},
 		{"JavaPort", cfg.JavaPort, "26565"},
 		{"BedrockPort", cfg.BedrockPort, "20132"},
 	}
@@ -142,6 +142,20 @@ func TestLoadConfigFrom_RCONPasswordEnvWinsOverEnvFile(t *testing.T) {
 	cfg := LoadConfigFrom(getenv, readFile)
 	if cfg.RCONPassword != "from-process-env" {
 		t.Fatalf("RCONPassword = %q, want process-env value", cfg.RCONPassword)
+	}
+}
+
+func TestLoadConfigFrom_LegacyPublicHostFallback(t *testing.T) {
+	getenv := func(k string) string {
+		if k == "MINECRAFT_PUBLIC_HOST" {
+			return "legacy.example.com"
+		}
+		return ""
+	}
+	readFile := func(string) ([]byte, error) { return nil, errors.New("not found") }
+
+	if got := LoadConfigFrom(getenv, readFile).StatusHost; got != "legacy.example.com" {
+		t.Fatalf("StatusHost = %q, want legacy fallback", got)
 	}
 }
 
@@ -266,7 +280,7 @@ func TestConfig_AddrHelpers(t *testing.T) {
 	cfg := Config{
 		RCONHost:    "127.0.0.1",
 		RCONPort:    "25575",
-		PublicHost:  "localhost",
+		StatusHost:  "oneminecraft.duckdns.org",
 		JavaPort:    "25565",
 		BedrockPort: "19132",
 	}
@@ -274,16 +288,20 @@ func TestConfig_AddrHelpers(t *testing.T) {
 	if got, want := cfg.RCONAddr(), "127.0.0.1:25575"; got != want {
 		t.Errorf("RCONAddr() = %q, want %q", got, want)
 	}
-	if got, want := cfg.JavaAddr(""), "localhost:25565"; got != want {
+	if got, want := cfg.JavaAddr(""), "oneminecraft.duckdns.org"; got != want {
 		t.Errorf("JavaAddr(\"\") = %q, want %q", got, want)
 	}
-	if got, want := cfg.JavaAddr("play.example.com"), "play.example.com:25565"; got != want {
+	if got, want := cfg.JavaAddr("play.example.com"), "play.example.com"; got != want {
 		t.Errorf("JavaAddr(host) = %q, want %q", got, want)
 	}
-	if got, want := cfg.BedrockAddr(""), "localhost:19132"; got != want {
+	if got, want := cfg.BedrockAddr(""), "oneminecraft.duckdns.org"; got != want {
 		t.Errorf("BedrockAddr(\"\") = %q, want %q", got, want)
 	}
-	if got, want := cfg.BedrockAddr("switch.example.com"), "switch.example.com:19132"; got != want {
+	if got, want := cfg.BedrockAddr("switch.example.com"), "switch.example.com"; got != want {
 		t.Errorf("BedrockAddr(host) = %q, want %q", got, want)
+	}
+	cfg.JavaPort = "25570"
+	if got, want := cfg.JavaAddr("play.example.com"), "play.example.com:25570"; got != want {
+		t.Errorf("JavaAddr(custom port) = %q, want %q", got, want)
 	}
 }

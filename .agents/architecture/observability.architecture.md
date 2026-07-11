@@ -16,6 +16,10 @@ README Ops section, no automation yet.
 - `docker compose ps`
 - `docker compose logs`
 - `ops/observability.sh`
+- `nethernode status`: container state, `docker exec ... rcon-cli list`, public
+  Java/Bedrock mcstatus.io probes, backups, and disk. Set
+  `MINECRAFT_STATUS_HOST` to public DNS; mcstatus.io cannot query `localhost`
+  from the EC2 host.
 - backup archive count and size
 
 ## Cloud Signals

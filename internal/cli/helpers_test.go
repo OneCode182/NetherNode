@@ -51,7 +51,7 @@ func newTestApp(t *testing.T, dryRun bool) *testApp {
 			RCONPort:        "25575",
 			RCONPassword:    "s3cr3t",
 			RCONTimeout:     time.Second,
-			PublicHost:      "localhost",
+			StatusHost:      "status.example.test",
 			JavaPort:        "25565",
 			BedrockPort:     "19132",
 		},

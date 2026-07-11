@@ -198,6 +198,11 @@ sudo NETHERNODE_CLI_IMAGE=ghcr.io/<owner>/nethernode:latest \
   bash ops/install-server-cli.sh
 ```
 
+When the host has neither Go nor a published image reference, the installer
+builds the current checkout with `golang:1.26-alpine` through Docker. This keeps
+`/usr/local/bin/nethernode` on the Go CLI instead of falling back to the
+shell-only compatibility wrapper.
+
 Manual cloud controls:
 
 - `.github/workflows/start-server.yml`: starts EC2, waits for SSM, pulls repo,
@@ -255,12 +260,38 @@ Scripts:
 - `ops/save-server.sh`: force-save full world/player state with RCON.
 - `ops/backup-server.sh`: force-save, create backup archive, keep newest 5 backups.
 - `ops/install-server-cli.sh`: installs the Go `/usr/local/bin/nethernode`
-  CLI and `/opt/nethernode/scripts/*` on the EC2 host.
+  CLI and `/opt/nethernode/scripts/*` on the EC2 host. It uses local Go, an
+  explicit runtime image, or a temporary Docker Go builder in that order.
 - `ops/nethernode`: legacy shell wrapper kept as a local/fallback helper.
 - `ops/restore.sh`: restore archive into world dir.
 - `ops/observability.sh`: local status/metrics checks (container, RCON players,
   stats, disk free vs the >20% target, backup count/sizes).
 - `ops/dns-update.sh`: DuckDNS update with token redaction in dry-run.
+
+### CLI Status
+
+`nethernode status` combines local container/RCON/storage checks with public
+Java and Bedrock checks through mcstatus.io. Configure the public hostname on
+the EC2 host, never `localhost`:
+
+```bash
+cd /opt/nethernode/app
+printf '\nMINECRAFT_STATUS_HOST=oneminecraft.duckdns.org\n' | sudo tee -a .env >/dev/null
+sudo /usr/local/bin/nethernode status
+```
+
+With default ports, it queries exactly:
+
+```text
+https://api.mcstatus.io/v2/status/java/oneminecraft.duckdns.org
+https://api.mcstatus.io/v2/status/bedrock/oneminecraft.duckdns.org
+```
+
+For nonstandard configured ports, the CLI adds `:<port>` automatically. RCON
+status uses `docker exec nethernode-minecraft rcon-cli list` first, then the Go
+TCP client only as fallback. Human output colors itself on a terminal; use
+`nethernode status --color=never` for logs or `nethernode status --json` for
+automation. `--host <public-dns-or-ip>` overrides the configured host once.
 
 ### World Save And Backup Safety
 

@@ -91,8 +91,8 @@ type bedrockResponse struct {
 	MOTD    wireMOTD    `json:"motd"`
 }
 
-// Java queries GET /v2/status/java/<address>, where address is a
-// "host:port" pair (e.g. "play.example.com:25565").
+// Java queries GET /v2/status/java/<address>, where address is a public host
+// or a host:port pair when a nonstandard port is needed.
 func (c *Client) Java(ctx context.Context, address string) (*JavaStatus, error) {
 	body, err := c.fetch(ctx, "/status/java/"+address)
 	if err != nil {
@@ -115,8 +115,8 @@ func (c *Client) Java(ctx context.Context, address string) (*JavaStatus, error) 
 	}, nil
 }
 
-// Bedrock queries GET /v2/status/bedrock/<address>, where address is a
-// "host:port" pair (e.g. "play.example.com:19132").
+// Bedrock queries GET /v2/status/bedrock/<address>, where address is a public
+// host or a host:port pair when a nonstandard port is needed.
 func (c *Client) Bedrock(ctx context.Context, address string) (*BedrockStatus, error) {
 	body, err := c.fetch(ctx, "/status/bedrock/"+address)
 	if err != nil {

@@ -182,6 +182,16 @@ func TestRunner_ContainerRunning_DryRun(t *testing.T) {
 	}
 }
 
+func TestRunner_ContainerCommand(t *testing.T) {
+	rec := &recorder{out: "There are 0 players"}
+	r := Runner{Exec: rec.exec}
+	out, err := r.ContainerCommand(context.Background(), "nethernode-minecraft", "rcon-cli", "list")
+	if err != nil || out != "There are 0 players" {
+		t.Fatalf("ContainerCommand() = %q, %v", out, err)
+	}
+	assertSingleCall(t, rec, "docker", []string{"exec", "nethernode-minecraft", "rcon-cli", "list"})
+}
+
 func TestRunner_DefaultExec(t *testing.T) {
 	// No Exec injected: falls back to os/exec via the unexported default.
 	r := Runner{Exec: nil}

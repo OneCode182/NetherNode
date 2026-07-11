@@ -5,6 +5,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPT_DIR="${NETHERNODE_SCRIPT_DIR:-/opt/nethernode/scripts}"
 BIN_PATH="${NETHERNODE_BIN_PATH:-/usr/local/bin/nethernode}"
 CLI_IMAGE="${NETHERNODE_CLI_IMAGE:-}"
+GO_BUILDER_IMAGE="${NETHERNODE_GO_BUILDER_IMAGE:-golang:1.26-alpine}"
 
 install_file() {
   local source="$1"
@@ -43,7 +44,29 @@ install_cli_from_source() {
 
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "${tmp_dir}"' RETURN
-  (cd "${PROJECT_ROOT}" && go build -trimpath -ldflags="-s -w" -o "${tmp_dir}/nethernode" ./cmd/nethernode)
+  if ! (cd "${PROJECT_ROOT}" && go build -trimpath -ldflags="-s -w" -o "${tmp_dir}/nethernode" ./cmd/nethernode); then
+    return 1
+  fi
+  install_file "${tmp_dir}/nethernode" "${BIN_PATH}"
+}
+
+install_cli_from_docker_builder() {
+  local tmp_dir
+
+  if ! command -v docker >/dev/null 2>&1; then
+    return 1
+  fi
+
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "${tmp_dir}"' RETURN
+  if ! docker run --rm \
+    -v "${PROJECT_ROOT}:/src:ro" \
+    -v "${tmp_dir}:/out" \
+    -w /src \
+    "${GO_BUILDER_IMAGE}" \
+    sh -ceu 'go build -trimpath -ldflags="-s -w" -o /out/nethernode ./cmd/nethernode'; then
+    return 1
+  fi
   install_file "${tmp_dir}/nethernode" "${BIN_PATH}"
 }
 
@@ -55,6 +78,8 @@ install_file "${PROJECT_ROOT}/ops/plugins-sync.sh" "${SCRIPT_DIR}/plugins-sync.s
 if [[ -n "${CLI_IMAGE}" ]]; then
   install_cli_from_image "${CLI_IMAGE}"
 elif install_cli_from_source; then
+  :
+elif install_cli_from_docker_builder; then
   :
 else
   echo "warning: Go toolchain unavailable; installing legacy shell wrapper" >&2

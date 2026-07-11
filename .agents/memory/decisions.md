@@ -62,3 +62,10 @@
 - Decision: Add SkinsRestorer to the existing Modrinth-managed Paper plugin manifest. Keep its default player permission group; do not add LuckPerms or a custom plugin config.
 - Rationale: SkinsRestorer `15.12.4` resolves for both aux `26.1.2` and repo-default `26.2`. Its `skinsrestorer.player` group is granted by default, so all normal Java players can set only their own skin without widening administration privileges.
 - Consequence: Plugin/config/player skin data live in the existing persistent `/data/plugins` volume and are backed up with the world. Sync can prune only a superseded SkinsRestorer jar; it does not alter worlds or backups.
+
+## 2026-07-11 - Status uses public DNS and container RCON first
+
+- Context: mcstatus.io is external and cannot reach EC2-local `localhost`; direct host-side TCP RCON can reset after Paper/image changes even when image `rcon-cli` works.
+- Decision: `MINECRAFT_STATUS_HOST` selects a public DNS/IP target, with legacy `MINECRAFT_PUBLIC_HOST` fallback. Standard Java/Bedrock ports omit `:port` in mcstatus.io paths. `nethernode status` calls `docker exec <container> rcon-cli list` before TCP RCON fallback.
+- Rationale: status matches the public player path and uses the runtime's known-good RCON client without changing save/admin operations.
+- Consequence: EC2 must set `MINECRAFT_STATUS_HOST=oneminecraft.duckdns.org`; colorized human output is terminal-aware, while JSON stays machine-safe.

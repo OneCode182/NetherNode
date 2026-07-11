@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -37,12 +38,20 @@ func TestCmdStatus_DryRunTouchesNothing(t *testing.T) {
 func TestCmdStatus_JSONAggregatesAllSources(t *testing.T) {
 	ta := newTestApp(t, false)
 	// docker inspect: container running.
-	ta.Exec.out = "true\n"
-
-	client := newFakeRCON()
-	client.responses["list"] = "There are 2 of a max of 5 players online: Steve, Alex"
 	dialed := 0
-	ta.App.DialRCON = dialerFor(client, nil, &dialed)
+	ta.App.DialRCON = dialerFor(newFakeRCON(), errDialUnreachable, &dialed)
+	ta.Exec.reply = func(_ context.Context, name string, args ...string) (string, error) {
+		switch {
+		case name == "docker" && len(args) > 0 && args[0] == "inspect":
+			return "true\n", nil
+		case name == "docker" && len(args) > 0 && args[0] == "exec":
+			return "There are 2 of a max of 5 players online: Steve, Alex\n", nil
+		case name == "df":
+			return "Filesystem Size Used Avail Use% Mounted on\n/dev/xvda 20G 5G 15G 25% /\n", nil
+		default:
+			return "", errDialUnreachable
+		}
+	}
 
 	mc := &fakeMCStatus{
 		java:    &mcstatus.JavaStatus{Online: true, Version: "Paper 26.2", PlayersOnline: 2, PlayersMax: 5},
@@ -70,6 +79,9 @@ func TestCmdStatus_JSONAggregatesAllSources(t *testing.T) {
 	if !report.RCON.Reachable || report.RCON.Error != "" || !strings.Contains(report.RCON.Raw, "Steve") {
 		t.Errorf("RCON = %+v, want reachable with player list", report.RCON)
 	}
+	if report.RCON.Transport != "docker exec rcon-cli" || dialed != 0 {
+		t.Errorf("RCON transport=%q dialed=%d, want docker exec and no tcp dial", report.RCON.Transport, dialed)
+	}
 	if !report.Java.Online || report.Java.Version != "Paper 26.2" || report.Java.PlayersOnline != 2 {
 		t.Errorf("Java = %+v, want online Paper 26.2 2 players", report.Java)
 	}
@@ -84,11 +96,43 @@ func TestCmdStatus_JSONAggregatesAllSources(t *testing.T) {
 	}
 
 	// --host must override the mcstatus.io lookup host, not the RCON host.
-	if len(mc.javaAddrs) != 1 || mc.javaAddrs[0] != "play.example.com:25565" {
-		t.Errorf("java lookup addr = %v, want [play.example.com:25565]", mc.javaAddrs)
+	if len(mc.javaAddrs) != 1 || mc.javaAddrs[0] != "play.example.com" {
+		t.Errorf("java lookup addr = %v, want [play.example.com]", mc.javaAddrs)
 	}
-	if len(mc.bedrockAddrs) != 1 || mc.bedrockAddrs[0] != "play.example.com:19132" {
-		t.Errorf("bedrock lookup addr = %v, want [play.example.com:19132]", mc.bedrockAddrs)
+	if len(mc.bedrockAddrs) != 1 || mc.bedrockAddrs[0] != "play.example.com" {
+		t.Errorf("bedrock lookup addr = %v, want [play.example.com]", mc.bedrockAddrs)
+	}
+}
+
+func TestCmdStatus_RCONFallsBackToTCP(t *testing.T) {
+	ta := newTestApp(t, false)
+	ta.Exec.reply = func(_ context.Context, name string, args ...string) (string, error) {
+		if name == "docker" && len(args) > 0 && args[0] == "exec" {
+			return "", errDialUnreachable
+		}
+		if name == "docker" && len(args) > 0 && args[0] == "inspect" {
+			return "true", nil
+		}
+		if name == "df" {
+			return "disk", nil
+		}
+		return "", errDialUnreachable
+	}
+	client := newFakeRCON()
+	client.responses["list"] = "There are 0 of a max of 5 players online"
+	dialed := 0
+	ta.App.DialRCON = dialerFor(client, nil, &dialed)
+	ta.App.MCStatus = &fakeMCStatus{java: &mcstatus.JavaStatus{}, bedrock: &mcstatus.BedrockStatus{}}
+
+	if err := CmdStatus(ta.App, []string{"--json"}); err != nil {
+		t.Fatalf("CmdStatus() error = %v", err)
+	}
+	var report StatusReport
+	if err := json.Unmarshal(ta.Stdout.Bytes(), &report); err != nil {
+		t.Fatalf("decode status JSON: %v", err)
+	}
+	if report.RCON.Transport != "tcp fallback" || !report.RCON.Reachable || dialed != 1 {
+		t.Errorf("RCON = %+v, dialed=%d; want reachable tcp fallback", report.RCON, dialed)
 	}
 }
 
@@ -137,10 +181,23 @@ func TestCmdStatus_HumanReadableOutput(t *testing.T) {
 		t.Fatalf("CmdStatus() error = %v", err)
 	}
 	out := ta.Stdout.String()
+	lower := strings.ToLower(out)
 	for _, want := range []string{"container", "rcon", "java", "bedrock", "backups", "disk"} {
-		if !strings.Contains(out, want) {
+		if !strings.Contains(lower, want) {
 			t.Errorf("human output missing section %q, got:\n%s", want, out)
 		}
+	}
+}
+
+func TestCmdStatus_ColorModes(t *testing.T) {
+	ta := newTestApp(t, false)
+	ta.Exec.out = "true\n"
+	ta.App.MCStatus = &fakeMCStatus{java: &mcstatus.JavaStatus{}, bedrock: &mcstatus.BedrockStatus{}}
+	if err := CmdStatus(ta.App, []string{"--color=always"}); err != nil {
+		t.Fatalf("CmdStatus(--color=always) error = %v", err)
+	}
+	if !strings.Contains(ta.Stdout.String(), "\x1b[") {
+		t.Fatalf("color output missing ANSI escape: %q", ta.Stdout.String())
 	}
 }
 

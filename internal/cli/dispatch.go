@@ -20,7 +20,8 @@ Commands:
   start                         docker compose up -d.
   stop [--no-backup]            Save + backup, then docker compose down.
   restart [--no-backup]         Save + backup, then down and up -d.
-  status [--host H] [--json]    Docker/RCON/mcstatus/backups/disk summary.
+  status [--host H] [--color M] [--json]
+                                Docker/RCON/mcstatus/backups/disk summary.
   save-server                   RCON save-all flush.
   backup-server [--retention N] Save + archive + prune old backups.
   admin list                    List ops.json entries.

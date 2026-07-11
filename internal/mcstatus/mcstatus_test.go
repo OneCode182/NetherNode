@@ -144,10 +144,10 @@ func TestClient_Java(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := newTestServer(t, "/status/java/play.example.com:25565", tt.status, tt.body)
+			ts := newTestServer(t, "/status/java/play.example.com", tt.status, tt.body)
 			client := &Client{BaseURL: ts.URL}
 
-			got, err := client.Java(context.Background(), "play.example.com:25565")
+			got, err := client.Java(context.Background(), "play.example.com")
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("Java() error = nil, want error")
@@ -206,10 +206,10 @@ func TestClient_Bedrock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := newTestServer(t, "/status/bedrock/play.example.com:19132", tt.status, tt.body)
+			ts := newTestServer(t, "/status/bedrock/play.example.com", tt.status, tt.body)
 			client := &Client{BaseURL: ts.URL}
 
-			got, err := client.Bedrock(context.Background(), "play.example.com:19132")
+			got, err := client.Bedrock(context.Background(), "play.example.com")
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("Bedrock() error = nil, want error")

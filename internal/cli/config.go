@@ -28,7 +28,7 @@ type Config struct {
 	RCONPassword string // MINECRAFT_RCON_PASSWORD (env, falling back to .env file)
 	RCONTimeout  time.Duration
 
-	PublicHost  string // MINECRAFT_PUBLIC_HOST, used for mcstatus.io lookups; overridable by --host
+	StatusHost  string // MINECRAFT_STATUS_HOST, public mcstatus.io target; overridable by --host
 	JavaPort    string // MINECRAFT_PORT
 	BedrockPort string // MINECRAFT_BEDROCK_PORT
 
@@ -40,22 +40,33 @@ func (c Config) RCONAddr() string {
 	return c.RCONHost + ":" + c.RCONPort
 }
 
-// JavaAddr returns the "host:port" pair used for the Java mcstatus.io lookup,
-// using host in place of PublicHost when host is non-empty.
+// JavaAddr returns the mcstatus.io target. Standard Java port 25565 is omitted
+// so a public DNS name becomes `/status/java/<host>` rather than localhost.
 func (c Config) JavaAddr(host string) string {
 	if host == "" {
-		host = c.PublicHost
+		host = c.StatusHost
 	}
-	return host + ":" + c.JavaPort
+	return statusAddress(host, c.JavaPort, "25565")
 }
 
-// BedrockAddr returns the "host:port" pair used for the Bedrock mcstatus.io
-// lookup, using host in place of PublicHost when host is non-empty.
+// BedrockAddr returns the mcstatus.io target. Standard Bedrock port 19132 is
+// omitted for the same public-DNS API path behavior as JavaAddr.
 func (c Config) BedrockAddr(host string) string {
 	if host == "" {
-		host = c.PublicHost
+		host = c.StatusHost
 	}
-	return host + ":" + c.BedrockPort
+	return statusAddress(host, c.BedrockPort, "19132")
+}
+
+func statusAddress(host, port, defaultPort string) string {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return ""
+	}
+	if strings.Contains(host, ":") || port == defaultPort {
+		return host
+	}
+	return host + ":" + port
 }
 
 // getenvFunc mirrors os.Getenv's signature so config loading can be tested
@@ -145,7 +156,7 @@ func LoadConfigFromRoot(root string, getenv getenvFunc, readFile readFileFunc) C
 		RCONPassword: lookup("MINECRAFT_RCON_PASSWORD"),
 		RCONTimeout:  5 * time.Second,
 
-		PublicHost:  firstNonEmpty(lookup("MINECRAFT_PUBLIC_HOST"), "localhost"),
+		StatusHost:  firstNonEmpty(lookup("MINECRAFT_STATUS_HOST"), lookup("MINECRAFT_PUBLIC_HOST")),
 		JavaPort:    firstNonEmpty(lookup("MINECRAFT_PORT"), "25565"),
 		BedrockPort: firstNonEmpty(lookup("MINECRAFT_BEDROCK_PORT"), "19132"),
 

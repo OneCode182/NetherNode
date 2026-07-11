@@ -22,10 +22,14 @@ type execRecorder struct {
 	calls []execCall
 	out   string
 	err   error
+	reply func(context.Context, string, ...string) (string, error)
 }
 
-func (r *execRecorder) exec(_ context.Context, name string, args ...string) (string, error) {
+func (r *execRecorder) exec(ctx context.Context, name string, args ...string) (string, error) {
 	r.calls = append(r.calls, execCall{name: name, args: append([]string(nil), args...)})
+	if r.reply != nil {
+		return r.reply(ctx, name, args...)
+	}
 	return r.out, r.err
 }
 

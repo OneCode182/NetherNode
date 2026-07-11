@@ -116,3 +116,15 @@ func (r *Runner) ContainerRunning(ctx context.Context, name string) (bool, error
 	}
 	return running, nil
 }
+
+// ContainerCommand executes a command inside an already-running container.
+// Status checks use this for the image-provided rcon-cli, which speaks the
+// exact RCON dialect bundled with the running Minecraft image.
+func (r *Runner) ContainerCommand(ctx context.Context, container string, command ...string) (string, error) {
+
+	args := append([]string{"exec", container}, command...)
+	if r.DryRun {
+		return commandLine("docker", args), nil
+	}
+	return r.exec(ctx, "docker", args...)
+}
