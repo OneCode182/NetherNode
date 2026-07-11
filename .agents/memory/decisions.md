@@ -55,3 +55,10 @@
 - Decision: Add `infra/azure` as validate-only Terraform scaffold; do not add Azure workflows, secrets, or deploy behavior.
 - Rationale: preserves portability without widening live operational surface or cost risk.
 - Consequence: AWS remains the default path; Azure work maps the same Docker Compose/env/volume/CLI boundary to a VM/network shape only.
+
+## 2026-07-11 - Manage offline-mode Java skins with SkinsRestorer
+
+- Context: NetherNode runs `online-mode=false`; private Java players need persistent individual skins while Floodgate/Geyser preserves Bedrock profile skins.
+- Decision: Add SkinsRestorer to the existing Modrinth-managed Paper plugin manifest. Keep its default player permission group; do not add LuckPerms or a custom plugin config.
+- Rationale: SkinsRestorer `15.12.4` resolves for both aux `26.1.2` and repo-default `26.2`. Its `skinsrestorer.player` group is granted by default, so all normal Java players can set only their own skin without widening administration privileges.
+- Consequence: Plugin/config/player skin data live in the existing persistent `/data/plugins` volume and are backed up with the world. Sync can prune only a superseded SkinsRestorer jar; it does not alter worlds or backups.

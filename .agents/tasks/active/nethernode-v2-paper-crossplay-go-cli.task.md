@@ -484,3 +484,10 @@ Append step evidence here.
 - Hand-ported what Chunker skips: `players/` (4 players), missing `data/minecraft/*.dat` (scoreboard, wandering_trader, ...), all NBT DataVersion byte-patched to 4790; ops/whitelist/usercache/ban lists copied from backup root.
 - Aux swap: fresh-world backup taken (retention 3), stop, world replaced, chown 1000, start: `Done preparing level "world"` with zero datafixer errors; seed `-343522682` (dev's pinned seed); Sirius182 op intact; external mcstatus java+bedrock online; `bluemap purge world` issued for re-render.
 - Result: dev's world progress now plays on aux `26.1.2` with full Java+Bedrock crossplay; upgrade back to `26.2` is native once Geyser ships support. Procedure documented in `minecraft-runtime.architecture.md`.
+
+### Post-V2 maintenance - SkinsRestorer (2026-07-11)
+
+- Scope: add persistent offline-mode Java skins without changing world, player data, or backup logic.
+- Decision: `skinsrestorer|modrinth|skinsrestorer|paper|latest` joins the existing managed manifest. Resolver evidence: SkinsRestorer `15.12.4` resolves for both aux `26.1.2` and repo-default `26.2`.
+- Configuration: no custom YAML and no permissions plugin. SkinsRestorer registers `skinsrestorer.player` with default access for normal players; `skinsrestorer.admin` remains ungranted. Bedrock avatar handling stays Floodgate/Geyser-owned.
+- Required live sequence: preserve aux-local `server/runtime.env` (`MINECRAFT_VERSION=26.1.2`), pull this commit, record backup inventory, run `nethernode plugins sync`, restart only `minecraft`, then verify `SkinsRestorer` in `/plugins`, RCON, Java/Bedrock status, and unchanged backup inventory.

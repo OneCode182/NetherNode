@@ -33,8 +33,9 @@ Usage:
   plugins-sync.sh [--dry-run]
   plugins-sync.sh --list
 
-Sync managed Paper crossplay plugins (Geyser, Floodgate, ViaVersion,
-ViaBackwards) into the Minecraft plugins dir, from server/plugins.manifest.
+Sync managed Paper crossplay and skin plugins (Geyser, Floodgate, ViaVersion,
+ViaBackwards, SkinsRestorer) into the Minecraft plugins dir, from
+server/plugins.manifest.
 Installs the Geyser config template when the plugin config is missing.
 Never touches world data.
 

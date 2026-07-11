@@ -65,6 +65,9 @@ Managed Paper plugin stack, declared in `server/plugins.manifest` and synced by
   key persists at `/data/plugins/floodgate/key.pem`.
 - ViaVersion: newer Java clients on an older server protocol.
 - ViaBackwards: older Java clients on a newer server protocol.
+- SkinsRestorer: restores and lets offline-mode Java players set their own
+  skins. Its persistent plugin data lives under
+  `/data/plugins/SkinsRestorer` and is included in normal world backups.
 - BlueMap: 3D web map of the world at `http://<host>:8100` (compose maps the
   port; infra opens it via opt-in `enable_bluemap_ingress`). First render
   takes a while after install.
@@ -98,6 +101,46 @@ Compatibility notes:
   join on `26.2` works once Geyser ships `26.2` support (re-run
   `make plugins-sync`). ViaVersion/ViaBackwards already resolve `26.2`
   (snapshot builds).
+
+### Offline-Mode Skins
+
+`SkinsRestorer` is managed through `server/plugins.manifest`; do not download a
+jar manually. `nethernode plugins sync` installs it into the persistent
+`/data/plugins` volume, never touches `world/` or `/opt/nethernode/backups`,
+and removes only a superseded SkinsRestorer jar during an upgrade.
+
+No custom permission config is required for this private server. SkinsRestorer
+grants its `skinsrestorer.player` group to every player by default. Do not grant
+`skinsrestorer.admin` to normal players: it permits changing other players'
+skins and plugin administration.
+
+Java players can run these in Minecraft after the plugin loads:
+
+```text
+/skin upload
+/skin url <direct-64x64-png-url>
+/skin clear
+```
+
+`/skin upload` gives the player an upload flow; `/skin url` accepts a direct
+PNG skin URL. The selected skin persists for that offline-mode Java identity
+and is shown to other Java players. Bedrock/Switch players keep their Bedrock
+profile skin through Floodgate/Geyser; SkinsRestorer does not replace the
+Switch account avatar. If a non-admin receives a permission error, first check
+whether a later-installed permissions plugin overrides the default
+`skinsrestorer.player` grant.
+
+After a plugin sync, restart only the Minecraft container and verify from an
+admin account:
+
+```text
+/plugins
+/skin
+```
+
+`SkinsRestorer` must appear in the plugin list. The server restart does not
+reset world, player, or backup data because they are bind-mounted outside the
+container.
 
 ## Lean AWS Runtime
 
