@@ -2,18 +2,26 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_ROOT=""
 # In the repository this script lives at <repo>/ops. On EC2 the Go CLI runs
 # the installed copy at /opt/nethernode/scripts while the tracked app is in
 # /opt/nethernode/app. Prefer an explicit root, then recognize that host layout.
 if [[ -n "${NETHERNODE_PROJECT_ROOT:-}" ]]; then
   PROJECT_ROOT="${NETHERNODE_PROJECT_ROOT}"
 elif [[ -f "${SCRIPT_DIR}/../app/server/plugins.manifest" ]]; then
-  PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../app" && pwd)"
+  INSTALL_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+  PROJECT_ROOT="${INSTALL_ROOT}/app"
 else
   PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 fi
 MANIFEST="${PLUGINS_MANIFEST:-${PROJECT_ROOT}/server/plugins.manifest}"
-DATA_DIR="${MINECRAFT_DATA_DIR:-${PROJECT_ROOT}/data/minecraft}"
+if [[ -n "${MINECRAFT_DATA_DIR:-}" ]]; then
+  DATA_DIR="${MINECRAFT_DATA_DIR}"
+elif [[ -n "${INSTALL_ROOT}" ]]; then
+  DATA_DIR="${INSTALL_ROOT}/data/minecraft"
+else
+  DATA_DIR="${PROJECT_ROOT}/data/minecraft"
+fi
 PLUGINS_DIR="${MINECRAFT_PLUGINS_DIR:-${DATA_DIR}/plugins}"
 RUNTIME_ENV="${RUNTIME_ENV:-${PROJECT_ROOT}/server/runtime.env}"
 # Plugin config templates installed only when the live config is missing.
@@ -57,7 +65,7 @@ Options:
 Environment:
   NETHERNODE_PROJECT_ROOT  Repo root. Auto-detects /opt/nethernode/app when installed.
   PLUGINS_MANIFEST        Manifest path. Default: <repo>/server/plugins.manifest
-  MINECRAFT_DATA_DIR      Data dir. Default: <repo>/data/minecraft
+  MINECRAFT_DATA_DIR      Data dir. Default: /opt/nethernode/data/minecraft when installed.
   MINECRAFT_PLUGINS_DIR   Plugins dir. Default: $MINECRAFT_DATA_DIR/plugins
   MINECRAFT_VERSION       Minecraft version. Default: from server/runtime.env
   RUNTIME_ENV             runtime.env path. Default: <repo>/server/runtime.env

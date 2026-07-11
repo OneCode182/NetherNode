@@ -110,8 +110,9 @@ jar manually. `nethernode plugins sync` installs it into the persistent
 and removes only a superseded SkinsRestorer jar during an upgrade.
 
 On EC2, the installed CLI automatically resolves the tracked app at
-`/opt/nethernode/app`; `nethernode plugins list` and `nethernode plugins sync`
-work from any current directory.
+`/opt/nethernode/app` and persistent plugin volume at
+`/opt/nethernode/data/minecraft`; `nethernode plugins list` and
+`nethernode plugins sync` work from any current directory.
 
 No custom permission config is required for this private server. SkinsRestorer
 grants its `skinsrestorer.player` group to every player by default. Do not grant
