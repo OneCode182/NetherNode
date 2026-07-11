@@ -9,3 +9,4 @@
 - Do not pipeline RCON packets to Minecraft: a trailer EXECCOMMAND sent before reading the response makes Paper close the connection (EOF). Detect end-of-response by short (<4096) fragment instead (fixed in `internal/rcon`, live-verified).
 - Root-run plugin sync must chown results to the container UID (1000); root-owned `plugins/` blocked Geyser from writing its own config and it disabled itself.
 - Geyser 2.10.1 does not run on Paper 26.2 (cloud/reflection crash on enable): verify Geyser's supported MC version before bumping `MINECRAFT_VERSION`.
+- Do not let `ops/install-server-cli.sh` silently leave the shell fallback on an EC2 host: that wrapper lacks Go lifecycle/status commands. When host Go is absent, compile the checked-out CLI with the Docker Go builder, then verify `file /usr/local/bin/nethernode` reports an ELF binary.
