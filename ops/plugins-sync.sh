@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# In the repository this script lives at <repo>/ops. On EC2 the Go CLI runs
+# the installed copy at /opt/nethernode/scripts while the tracked app is in
+# /opt/nethernode/app. Prefer an explicit root, then recognize that host layout.
+if [[ -n "${NETHERNODE_PROJECT_ROOT:-}" ]]; then
+  PROJECT_ROOT="${NETHERNODE_PROJECT_ROOT}"
+elif [[ -f "${SCRIPT_DIR}/../app/server/plugins.manifest" ]]; then
+  PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../app" && pwd)"
+else
+  PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+fi
 MANIFEST="${PLUGINS_MANIFEST:-${PROJECT_ROOT}/server/plugins.manifest}"
 DATA_DIR="${MINECRAFT_DATA_DIR:-${PROJECT_ROOT}/data/minecraft}"
 PLUGINS_DIR="${MINECRAFT_PLUGINS_DIR:-${DATA_DIR}/plugins}"
@@ -45,6 +55,7 @@ Options:
   -h, --help  This help.
 
 Environment:
+  NETHERNODE_PROJECT_ROOT  Repo root. Auto-detects /opt/nethernode/app when installed.
   PLUGINS_MANIFEST        Manifest path. Default: <repo>/server/plugins.manifest
   MINECRAFT_DATA_DIR      Data dir. Default: <repo>/data/minecraft
   MINECRAFT_PLUGINS_DIR   Plugins dir. Default: $MINECRAFT_DATA_DIR/plugins
