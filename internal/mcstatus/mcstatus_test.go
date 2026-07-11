@@ -247,6 +247,15 @@ func TestClient_EmptyAddressDoesNotHitNetwork(t *testing.T) {
 	}
 }
 
+func TestWireVersion_DisplayNameFallsBackToBedrockName(t *testing.T) {
+	if got := (wireVersion{Name: "26.33"}).displayName(); got != "26.33" {
+		t.Fatalf("displayName() = %q, want Bedrock name fallback", got)
+	}
+	if got := (wireVersion{NameClean: "Paper 26.1.2", Name: "ignored"}).displayName(); got != "Paper 26.1.2" {
+		t.Fatalf("displayName() = %q, want clean name", got)
+	}
+}
+
 func TestNew(t *testing.T) {
 	c := New()
 	if c.BaseURL != defaultBaseURL {

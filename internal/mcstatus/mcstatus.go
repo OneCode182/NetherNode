@@ -62,6 +62,14 @@ type BedrockStatus struct {
 // caller only reads through the accessor helpers below.
 type wireVersion struct {
 	NameClean string `json:"name_clean"`
+	Name      string `json:"name"`
+}
+
+func (v wireVersion) displayName() string {
+	if v.NameClean != "" {
+		return v.NameClean
+	}
+	return v.Name
 }
 
 type wirePlayers struct {
@@ -108,7 +116,7 @@ func (c *Client) Java(ctx context.Context, address string) (*JavaStatus, error) 
 		Online:        raw.Online,
 		Host:          raw.Host,
 		Port:          raw.Port,
-		Version:       raw.Version.NameClean,
+		Version:       raw.Version.displayName(),
 		PlayersOnline: raw.Players.Online,
 		PlayersMax:    raw.Players.Max,
 		MOTD:          raw.MOTD.Clean,
@@ -132,7 +140,7 @@ func (c *Client) Bedrock(ctx context.Context, address string) (*BedrockStatus, e
 		Online:        raw.Online,
 		Host:          raw.Host,
 		Port:          raw.Port,
-		Version:       raw.Version.NameClean,
+		Version:       raw.Version.displayName(),
 		PlayersOnline: raw.Players.Online,
 		PlayersMax:    raw.Players.Max,
 		MOTD:          raw.MOTD.Clean,

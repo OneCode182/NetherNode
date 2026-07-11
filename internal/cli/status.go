@@ -287,8 +287,19 @@ func (a *App) printStatusHuman(r StatusReport, color bool) {
 	if r.Disk.Error != "" {
 		a.printf("  disk       %s\n", state("FAIL", r.Disk.Error))
 	} else {
-		a.printf("  disk       %s\n", state("OK", r.Disk.Raw))
+		a.printf("  disk       %s\n", state("OK", diskSummary(r.Disk.Raw)))
 	}
+}
+
+func diskSummary(raw string) string {
+	lines := strings.Split(strings.TrimSpace(raw), "\n")
+	if len(lines) >= 2 {
+		fields := strings.Fields(lines[len(lines)-1])
+		if len(fields) >= 6 {
+			return fmt.Sprintf("%s total | %s used | %s free | %s used (%s)", fields[1], fields[2], fields[3], fields[4], fields[5])
+		}
+	}
+	return raw
 }
 
 func validColorMode(mode string) bool {

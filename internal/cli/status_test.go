@@ -201,6 +201,13 @@ func TestCmdStatus_ColorModes(t *testing.T) {
 	}
 }
 
+func TestDiskSummary(t *testing.T) {
+	raw := "Filesystem Size Used Avail Use% Mounted on\n/dev/nvme0n1p1 20G 6.7G 14G 34% /\n"
+	if got, want := diskSummary(raw), "20G total | 6.7G used | 14G free | 34% used (/)"; got != want {
+		t.Fatalf("diskSummary() = %q, want %q", got, want)
+	}
+}
+
 func TestCmdStatus_UnknownFlag(t *testing.T) {
 	ta := newTestApp(t, false)
 	if err := CmdStatus(ta.App, []string{"--bogus"}); err == nil {
