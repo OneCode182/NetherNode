@@ -76,3 +76,10 @@
 - Decision: Add image-bundled `NetherNodeAdmin` Paper plugin with `/nethernode damage off|on`; persist UUID membership only in `/data/plugins/NetherNodeAdmin/config.yml` and cancel Bukkit/Paper damage events for enabled players.
 - Rationale: This is a small server-only extension, requires no client mod, survives death/reconnect/restart, and uses the existing persistent plugin/backups boundary without changing world/player data.
 - Consequence: `nethernode.damage` is OP-only by default and command scope is intentionally self-only. A deployed jar needs a safe Minecraft container restart to load; never use Paper runtime plugin reload.
+
+## 2026-07-12 - Keep local cloud controller auxiliary and safety-first
+
+- Context: Operators need cross-platform manual start/stop/status while EC2 has a changing public IP.
+- Decision: Use Bash/PowerShell controller with AWS CLI polling plus SSH for current local convenience; preserve GitHub OIDC + SSM as canonical CI/CD. Stop always backs up, stops the server without a second backup, then stops EC2; it never terminates.
+- Rationale: Gives operators direct, portable control without moving deployment trust to local SSH or risking persistent world data.
+- Consequence: SSH must be enabled and security-group restricted; private-key unlock stays in OS SSH agents; sync/pull may never mutate `/opt/nethernode/data` or `/opt/nethernode/backups`.

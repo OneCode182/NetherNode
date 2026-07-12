@@ -20,6 +20,9 @@ README Ops section, no automation yet.
   Java/Bedrock mcstatus.io probes, backups, and disk. Set
   `MINECRAFT_STATUS_HOST` to public DNS; mcstatus.io cannot query `localhost`
   from the EC2 host.
+- Local controller `status` polls AWS for EC2 state and current public IP each
+  refresh. It delegates domain/player probes to remote `nethernode status`, so
+  DNS truth stays at the runtime boundary rather than cached in the controller.
 - backup archive count and size
 
 ## Cloud Signals

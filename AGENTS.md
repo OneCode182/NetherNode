@@ -10,6 +10,22 @@ Read this file first. Then load `.agents/AGENTS.md`, `.agents/env.json`, and
 - Graphify narrows navigation; Markdown docs remain source of truth.
 - `terraform apply` and any AWS resource creation need explicit human approval.
 
+## Local Cloud Controller
+
+- `scripts/nethernode.sh` is Bash and may be called directly from fish;
+  Windows uses `scripts/nethernode.ps1` or `scripts/nethernode.bat`.
+- Controller config is copied from `scripts/nethernode.env.example` to ignored
+  `scripts/nethernode.local.env`. Require AWS CLI authentication, OpenSSH, and
+  an OS SSH agent with the private key unlocked.
+- Never store Git or SSH key passphrases. Controller performs no Git work; key
+  passphrase ownership remains with `ssh-agent` or Windows OpenSSH agent.
+- SSH is temporary local-operator convenience. CI/CD authority remains GitHub
+  OIDC + SSM. SSH must be enabled and security-group restricted before use.
+- Stop order is `backup-server` -> `stop --no-backup` -> EC2 stop. Never
+  terminate EC2; `--only-ec2` must refuse while the container runs.
+- Remote sync/pull work must never mutate `/opt/nethernode/data` or
+  `/opt/nethernode/backups`.
+
 ## Runtime Save And Backup Rules
 
 - Before backup or shutdown, preserve Minecraft state with

@@ -261,6 +261,79 @@ No-reset policy:
   only workflows allowed to send SSM commands or start/stop EC2.
 - `ops/check-ci-no-reset.sh` enforces this split in `make validate`.
 
+## Local Cloud Controller
+
+Use the controller for an operator's cross-platform, manual cloud actions. It
+does not replace the canonical CI/CD path: GitHub Actions continues to use OIDC
+and SSM. The controller currently uses SSH only as an auxiliary local
+convenience path; enable SSH on the EC2 host and restrict its security-group
+ingress to trusted operator addresses before using it.
+
+Prerequisites:
+
+- AWS CLI installed and authenticated through its normal credential chain
+  (`aws configure`, SSO, or another supported local profile).
+- OpenSSH client installed.
+- Private key loaded by `ssh-agent` on Linux/macOS or Windows OpenSSH agent.
+- Copy config once; it is intentionally ignored by Git:
+
+  ```bash
+  cp scripts/nethernode.env.example scripts/nethernode.local.env
+  ```
+
+  ```powershell
+  Copy-Item scripts/nethernode.env.example scripts/nethernode.local.env
+  ```
+
+Set `AWS_REGION`, `EC2_INSTANCE_ID`, `SSH_USER`, `SSH_KEY_PATH`, and optional
+`MINECRAFT_STATUS_HOST` in that local file. Process environment values override
+the file, and `NETHERNODE_CLOUD_ENV` can select another local config path.
+Never store Git or SSH key passphrases in the config or repo. The controller
+does no Git work, so it never needs a Git passphrase; key unlock belongs to the
+OS SSH agent.
+
+Linux Bash controller, including fish shells (Bash runs directly):
+
+```fish
+./scripts/nethernode.sh status
+./scripts/nethernode.sh start
+./scripts/nethernode.sh stop --no-watch
+```
+
+Windows controller:
+
+```powershell
+.\scripts\nethernode.ps1 status
+.\scripts\nethernode.bat status
+```
+
+Commands:
+
+```text
+status [--once]
+start [--only-ec2 | --only-server] [--no-watch]
+stop [--only-ec2 | --only-server] [--no-watch]
+restart [--no-watch]
+save
+backup
+```
+
+`status` refreshes in place until `Ctrl+C`; `status --once` prints one poll.
+`start` and `stop` enter status watching by default; use `--no-watch` for one
+command then exit. Each poll gets the current public IP from AWS. The remote
+`nethernode status` command owns domain/public game status, using
+`MINECRAFT_STATUS_HOST` when configured.
+
+Stop safety is fixed: `nethernode backup-server` ->
+`nethernode stop --no-backup` -> EC2 stop. `stop --only-ec2` refuses while the
+Minecraft container is running. The controller never calls EC2 termination.
+`restart` backs up before restarting the server; when EC2 is stopped it starts
+the normal server path instead.
+
+Remote sync/pull helpers must never modify `/opt/nethernode/data` or
+`/opt/nethernode/backups`; these paths remain persistent world and backup
+ownership boundaries.
+
 ## Cost Model
 
 Target: under USD 30 over 6 months (hard ceiling USD 50) against USD 90 AWS
