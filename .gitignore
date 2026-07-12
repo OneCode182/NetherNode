@@ -20,5 +20,6 @@ infra/*.tfvars
 infra/terraform.tfstate*
 infra/tfplan
 /nethernode
+/scripts/nethernode.local.env
 cmd/nethernode/nethernode
 server/plugins/nethernode-admin/target/

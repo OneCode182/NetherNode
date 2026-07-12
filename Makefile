@@ -5,7 +5,7 @@ COMPOSE_FILE ?= compose.yaml
 ENV_FILE ?= .env
 ENV_EXAMPLE ?= .env.example
 
-.PHONY: help env up down stop-safe restart logs status minecraft-shell backup backup-dry-run install-cli restore restore-dry-run observability dns-update dns-update-dry-run plugins-sync plugins-sync-dry-run plugins-list validate bootstrap
+.PHONY: help env up down stop-safe restart logs status minecraft-shell backup backup-dry-run install-cli restore restore-dry-run observability dns-update dns-update-dry-run plugins-sync plugins-sync-dry-run plugins-list controller-test validate bootstrap
 
 help:
 	@echo "NetherNode runtime tasks"
@@ -23,6 +23,7 @@ help:
 	@echo "  make plugins-sync-dry-run preview plugin sync"
 	@echo "  make plugins-list       list managed plugins"
 	@echo "  make dns-update-dry-run preview DuckDNS update"
+	@echo "  make controller-test     run cloud controller mock tests"
 	@echo "  make validate           run compose + script checks"
 
 env:
@@ -98,6 +99,9 @@ dns-update:
 dns-update-dry-run:
 	@bash ops/dns-update.sh --domain "$${DUCKDNS_DOMAIN:-nethernode}" --token "$${DUCKDNS_TOKEN:-dry-run-token}" --dry-run
 
+controller-test:
+	@bash scripts/tests/nethernode-controller-test.sh
+
 validate:
 	@cp -n "$(ENV_EXAMPLE)" "$(ENV_FILE)"
 	@docker compose -f "$(COMPOSE_FILE)" config -q
@@ -116,3 +120,4 @@ validate:
 	@bash ops/observability.sh --dry-run
 	@bash ops/backup.sh --dry-run
 	@bash ops/stop-safe.sh --dry-run
+	@$(MAKE) controller-test

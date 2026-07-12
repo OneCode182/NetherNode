@@ -5,6 +5,17 @@ on:
   push:
 
 jobs:
+  windows-controller:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PowerShell controller help smoke
+        shell: pwsh
+        run: .\scripts\nethernode.ps1 help
+      - name: Batch launcher help smoke
+        shell: cmd
+        run: cmd /c scripts\nethernode.bat help
+
   validate:
     runs-on: ubuntu-latest
     steps:
