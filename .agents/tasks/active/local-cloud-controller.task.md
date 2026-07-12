@@ -22,11 +22,11 @@ NetherNode EC2, then complete auxiliary Git sync and CI verification.
 | S1 | done | Document command UX, auth/key ownership, SSH boundary, stop safety, IP/domain behavior, and data boundaries. | Owned docs + memory updated. |
 | S2 | done | Verify controller behavior with mock AWS/SSH commands. | `make controller-test` passed 7 checks. |
 | S3 | done | Run local, harness, Graphify, CI safety, IaC, and read-only auxiliary verification. | All local gates passed; live status and data-integrity evidence recorded below. |
-| S4 | pending | Create atomic commits, push, sync auxiliary checkout with Git, and verify CI. | Commit/push/sync/CI evidence pending. |
+| S4 | done | Create atomic commits, push, sync auxiliary checkout with Git, and verify CI without restarting the server or changing persistent data. | Commits `26b530e` and `27348e0` pushed to `dev`; CI run `29182500797` passed; auxiliary checkout fast-forwarded and integrity evidence recorded below. |
 
 Each step: design -> implementation -> verification -> correction -> harness
-update. On failure, return to implementation. Do not close S4 without recorded
-commit, push, auxiliary sync, and CI results.
+update. On failure, return to implementation. Each closed step requires recorded
+verification evidence.
 
 ## Acceptance
 
@@ -60,4 +60,18 @@ commit, push, auxiliary sync, and CI results.
 - 2026-07-12: before/after backup inventory SHA256 was identical:
   `1f8e567e3ed7ebd43a76ecb117d3b804d1270a24e394356f3a741f3f30a98c1a`.
   World `level.dat` size and mtime were unchanged.
-- S4 pending: atomic commits, push, auxiliary Git sync, and CI verification.
+- 2026-07-12: feature commit `26b530e` and docs commit `27348e0` pushed to
+  `dev`.
+- 2026-07-12: CI run `29182500797` succeeded: `windows-controller` PowerShell
+  and BAT checks, `validate`, and Go checks passed.
+- 2026-07-12: auxiliary checkout fast-forwarded from `8849683` to `27348e0`;
+  local override `server/runtime.env` was preserved.
+- 2026-07-12: container ID
+  `d9ee3ab4527fc6363dbb362a800e000b2256cc150dc60792fef4afd8334a2fe6`
+  and `StartedAt=2026-07-12T05:08:59.19985823Z` were unchanged after sync;
+  `running=true`, proving no container restart.
+- 2026-07-12: backup inventory SHA256 remained
+  `1f8e567e3ed7ebd43a76ecb117d3b804d1270a24e394356f3a741f3f30a98c1a`.
+- 2026-07-12: world `level.dat` remained size `471` with mtime `1783837185`
+  before and after sync.
+- 2026-07-12: remote Java and Bedrock status online, `0/5` players, 5 backups.
