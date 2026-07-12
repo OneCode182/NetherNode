@@ -102,7 +102,10 @@ readable_command="${command//\\/}"
 printf 'ssh %s\n' "${readable_command}" >> "${MOCK_LOG}"
 case "${readable_command}" in
   *'nethernode status'*) printf 'remote status: online\n' ;;
-  *"docker inspect -f"*) printf '%s\n' "${MOCK_CONTAINER_STATE:-false}" ;;
+  *"docker inspect -f"*)
+    [[ "${MOCK_CONTAINER_LEADING_BLANK:-false}" == 'true' ]] && printf '\n'
+    printf '%s\n' "${MOCK_CONTAINER_STATE:-false}"
+    ;;
   *'nethernode backup-server'*) : ;;
   *'nethernode stop --no-backup'*) : ;;
   *'docker exec nethernode-minecraft rcon-cli list'*) printf 'There are 0 of a max of 5 players online:\n' ;;
@@ -163,9 +166,10 @@ assert_not_contains 'ec2 stop-instances' "${MOCK_LOG}"
 pass 'ec2-only stop refuses running remote container'
 
 reset_mocks running
-MOCK_CONTAINER_STATE=missing run_controller stop --only-ec2 --no-watch > /dev/null
+MOCK_CONTAINER_STATE=missing MOCK_CONTAINER_LEADING_BLANK=true \
+  run_controller stop --only-ec2 --no-watch > /dev/null
 assert_contains 'ec2 stop-instances' "${MOCK_LOG}"
-pass 'ec2-only stop accepts an already removed server container'
+pass 'ec2-only stop accepts a blank-prefixed missing container state'
 
 reset_mocks running
 run_controller stop --no-watch > /dev/null

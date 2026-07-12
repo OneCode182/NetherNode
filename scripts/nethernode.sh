@@ -227,8 +227,16 @@ wait_for_server_ready() {
 }
 
 remote_container_state() {
-  remote_exec_at "${CURRENT_IP}" \
-    "sudo -n docker info >/dev/null && { sudo -n docker inspect -f '{{.State.Running}}' nethernode-minecraft 2>/dev/null || printf 'missing\\n'; }"
+  local output line state=''
+  output="$(remote_exec_at "${CURRENT_IP}" \
+    "sudo -n docker info >/dev/null && { sudo -n docker inspect -f '{{.State.Running}}' nethernode-minecraft 2>/dev/null || printf 'missing\\n'; }")" \
+    || return
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="$(trim "${line}")"
+    [[ -n "${line}" ]] && state="${line}"
+  done <<< "${output}"
+  printf '%s\n' "${state}"
 }
 
 status_once() {
