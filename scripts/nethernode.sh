@@ -211,6 +211,21 @@ remote_start_server() {
   remote_exec_at "${CURRENT_IP}" "cd -- $(shell_quote "${REMOTE_APP_DIR}") && sudo -n bash ops/start.sh"
 }
 
+wait_for_server_ready() {
+  local attempt output
+
+  info 'Waiting for Minecraft readiness...'
+  for ((attempt = 1; attempt <= 60; attempt++)); do
+    if output="$(remote_exec_at "${CURRENT_IP}" \
+      "sudo -n docker exec nethernode-minecraft rcon-cli list" 2>/dev/null)"; then
+      ok "Minecraft ready: ${output}"
+      return
+    fi
+    sleep "${POLL_INTERVAL_SECONDS}"
+  done
+  die 'Minecraft did not become RCON-ready after 60 attempts'
+}
+
 remote_container_state() {
   remote_exec_at "${CURRENT_IP}" \
     "sudo -n docker info >/dev/null && { sudo -n docker inspect -f '{{.State.Running}}' nethernode-minecraft 2>/dev/null || printf 'missing\\n'; }"
@@ -291,7 +306,7 @@ cmd_start() {
     wait_for_ssh
     info "Starting Minecraft server..."
     remote_start_server
-    ok "Minecraft start requested."
+    wait_for_server_ready
   fi
   watch_after "${no_watch}"
 }
@@ -363,7 +378,7 @@ cmd_restart() {
   remote_cli_at "${CURRENT_IP}" backup-server
   info 'Restarting Minecraft server...'
   remote_cli_at "${CURRENT_IP}" restart --no-backup
-  ok 'Minecraft restart requested.'
+  wait_for_server_ready
   watch_after "${no_watch}"
 }
 

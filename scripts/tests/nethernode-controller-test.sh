@@ -105,6 +105,7 @@ case "${readable_command}" in
   *"docker inspect -f"*) printf '%s\n' "${MOCK_CONTAINER_STATE:-false}" ;;
   *'nethernode backup-server'*) : ;;
   *'nethernode stop --no-backup'*) : ;;
+  *'docker exec nethernode-minecraft rcon-cli list'*) printf 'There are 0 of a max of 5 players online:\n' ;;
   *'bash ops/start.sh'*) : ;;
   *'bash -lc true'*) : ;;
   *) printf 'unexpected ssh command: %s\n' "${command}" >&2; exit 1 ;;
@@ -137,6 +138,12 @@ assert_contains 'ec2 start-instances' "${MOCK_LOG}"
 assert_contains 'ec2 wait instance-status-ok' "${MOCK_LOG}"
 assert_not_contains 'ssh ' "${MOCK_LOG}"
 pass 'ec2-only start starts and waits without ssh'
+
+reset_mocks stopped
+run_controller start --no-watch > /dev/null
+assert_contains 'bash ops/start.sh' "${MOCK_LOG}"
+assert_contains 'docker exec nethernode-minecraft rcon-cli list' "${MOCK_LOG}"
+pass 'full start waits for Minecraft RCON readiness'
 
 stopped_stop_output="${TMP_DIR}/stopped-stop.out"
 reset_mocks stopped

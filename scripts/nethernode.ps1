@@ -172,6 +172,24 @@ function Invoke-Remote {
     return @($output | ForEach-Object { $_.ToString() })
 }
 
+function Wait-ServerReady {
+    param([hashtable]$Config, [int]$MaxAttempts = 60)
+
+    Write-Info 'Waiting for Minecraft readiness...'
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            $output = Invoke-Remote -Config $Config -Command 'sudo -n docker exec nethernode-minecraft rcon-cli list' -Quiet -SkipWait
+            Write-Ok "Minecraft ready: $($output -join ' ')"
+            return
+        } catch {
+            if ($attempt -lt $MaxAttempts) {
+                Start-Sleep -Seconds $Config.POLL_INTERVAL_SECONDS
+            }
+        }
+    }
+    throw "Minecraft did not become RCON-ready after $MaxAttempts attempts."
+}
+
 function Invoke-RemoteScript {
     param([hashtable]$Config, [string]$Script, [string[]]$Arguments = @())
     $dir = ConvertTo-ShellLiteral $Config.REMOTE_APP_DIR
@@ -273,7 +291,11 @@ function Invoke-Start {
     Assert-Flags $Flags @('--only-ec2', '--only-server', '--no-watch')
     $onlyEc2 = $Flags -contains '--only-ec2'; $onlyServer = $Flags -contains '--only-server'
     if (-not $onlyServer) { Start-Ec2 -Config $Config }
-    if (-not $onlyEc2) { Write-Info 'Starting server...'; Invoke-RemoteScript -Config $Config -Script 'ops/start.sh'; Write-Ok 'Server started.' }
+    if (-not $onlyEc2) {
+        Write-Info 'Starting server...'
+        Invoke-RemoteScript -Config $Config -Script 'ops/start.sh'
+        Wait-ServerReady -Config $Config
+    }
     if ($Flags -notcontains '--no-watch') { Show-Status -Config $Config }
 }
 
@@ -312,6 +334,7 @@ function Invoke-Restart {
     Start-Ec2 -Config $Config
     Write-Info 'Backing up server...'; Invoke-RemoteNetherNode -Config $Config -Arguments @('backup-server') | Out-Null; Write-Ok 'Backup complete.'
     Write-Info 'Restarting server...'; Invoke-RemoteNetherNode -Config $Config -Arguments @('restart', '--no-backup') | Out-Null; Write-Ok 'Server restarted.'
+    Wait-ServerReady -Config $Config
     if ($Flags -notcontains '--no-watch') { Show-Status -Config $Config }
 }
 
