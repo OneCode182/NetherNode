@@ -20,6 +20,9 @@ Read this file first. Then load `.agents/AGENTS.md`, `.agents/env.json`, and
   Minecraft, then `docker compose down`.
 - On deployed EC2 hosts, prefer `nethernode save-server` for manual saves and
   `nethernode backup-server` for save + backup + retention.
+- Built-in Paper plugins are copied from the runtime image's `/plugins` path
+  into the persistent `/data/plugins` path on startup. They may store their
+  own state there, but must never mutate world data or backup archives.
 - For low-disk EC2 operation, use `BACKUP_RETENTION=1` to keep only the newest
   local backup. Do not use `BACKUP_RETENTION=0` to mean "keep one" with the
   current script.

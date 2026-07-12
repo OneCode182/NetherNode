@@ -147,6 +147,33 @@ admin account:
 reset world, player, or backup data because they are bind-mounted outside the
 container.
 
+### Persistent Damage Immunity
+
+The runtime image includes the small Paper plugin `NetherNodeAdmin`. It adds a
+private-server command with no client mod required:
+
+```text
+/nethernode damage off
+/nethernode damage on
+```
+
+`off` enables immunity for the operator executing the command; `on` gives that
+same player normal damage again. Permission `nethernode.damage` defaults to
+Paper operators. There is intentionally no target parameter, so one admin
+cannot silently change another player's immunity through this command.
+
+This is persistent server-side state, not a temporary potion effect. The plugin
+cancels damage events for the selected UUID and writes only
+`/data/plugins/NetherNodeAdmin/config.yml`. It survives death, reconnects, and
+container restarts until `/nethernode damage on`; normal NetherNode backups
+include the config. It never edits `world/`, player NBT, or backup archives.
+
+The image copies `NetherNodeAdmin.jar` from `/plugins` to persistent
+`/data/plugins` at container startup. A newly deployed Paper plugin requires a
+safe Minecraft container restart to load. Do not use Paper runtime plugin
+reload; it is unsafe. The restart preserves world, player, plugin-config, and
+backup data because those paths are mounted outside the container.
+
 ## Lean AWS Runtime
 
 Terraform/OpenTofu lives in `infra/`.

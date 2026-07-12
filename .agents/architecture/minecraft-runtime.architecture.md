@@ -20,6 +20,7 @@
 - `MINECRAFT_MODRINTH_PROJECTS` stays empty: one management mechanism only.
 - Geyser config template `server/config/geyser/config.yml` installs only when missing; Floodgate key persists at `/data/plugins/floodgate/key.pem`.
 - SkinsRestorer needs no versioned config override: its `skinsrestorer.player` permission group defaults to all players, while `skinsrestorer.admin` remains operator-only. Its config and per-player skin data persist under `/data/plugins/SkinsRestorer` and are covered by backups.
+- `NetherNodeAdmin` is a small built-in Paper plugin. The Docker build compiles it with Java 25 and Paper API `26.1.2`, then places its jar at image path `/plugins/NetherNodeAdmin.jar`; the itzg runtime synchronizes that into persistent `/data/plugins` on startup. `/nethernode damage off|on` stores only selected player UUIDs in `/data/plugins/NetherNodeAdmin/config.yml` and cancels damage events for them. Permission `nethernode.damage` defaults to OP; the in-game command only toggles the executing player's state.
 - Switch/Bedrock compatibility depends on Geyser/Floodgate support for selected Minecraft version; Switch needs BedrockConnect-style DNS workaround.
 
 ## Paper Migration Safety

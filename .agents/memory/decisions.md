@@ -69,3 +69,10 @@
 - Decision: `MINECRAFT_STATUS_HOST` selects a public DNS/IP target, with legacy `MINECRAFT_PUBLIC_HOST` fallback. Standard Java/Bedrock ports omit `:port` in mcstatus.io paths. `nethernode status` calls `docker exec <container> rcon-cli list` before TCP RCON fallback.
 - Rationale: status matches the public player path and uses the runtime's known-good RCON client without changing save/admin operations.
 - Consequence: EC2 must set `MINECRAFT_STATUS_HOST=oneminecraft.duckdns.org`; colorized human output is terminal-aware, while JSON stays machine-safe.
+
+## 2026-07-11 - Persist admin damage immunity in a Paper plugin
+
+- Context: An operator needs short in-game commands for damage immunity that do not depend on effects expiring after death or restarting the container.
+- Decision: Add image-bundled `NetherNodeAdmin` Paper plugin with `/nethernode damage off|on`; persist UUID membership only in `/data/plugins/NetherNodeAdmin/config.yml` and cancel Bukkit/Paper damage events for enabled players.
+- Rationale: This is a small server-only extension, requires no client mod, survives death/reconnect/restart, and uses the existing persistent plugin/backups boundary without changing world/player data.
+- Consequence: `nethernode.damage` is OP-only by default and command scope is intentionally self-only. A deployed jar needs a safe Minecraft container restart to load; never use Paper runtime plugin reload.

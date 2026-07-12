@@ -1,0 +1,15 @@
+name: NetherNodeAdmin
+version: 1.0.0
+main: com.onecode.nethernode.admin.NetherNodeAdminPlugin
+description: Persistent private-server admin controls for NetherNode.
+api-version: '26.1.2'
+author: OneCode182
+commands:
+  nethernode:
+    description: NetherNode in-game admin controls.
+    usage: /nethernode damage <off|on>
+    permission: nethernode.damage
+permissions:
+  nethernode.damage:
+    description: Toggle your own persistent damage immunity.
+    default: op

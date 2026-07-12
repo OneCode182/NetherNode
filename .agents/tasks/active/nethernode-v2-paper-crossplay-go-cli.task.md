@@ -136,6 +136,7 @@ Subagents provide evidence. Leader decides.
 | S9 | done | Azure scaffold | `infra/azure` minimal Terraform scaffold + README; no deploy. | `terraform -chdir=infra/azure init -backend=false`; `terraform -chdir=infra/azure validate` | `chore(infra): add Azure extension scaffold` |
 | S10 | done | SSH key local-only | Create `/home/onecode/lab/ec2-nethernode-v2/nethernode-v2(.pub)`; never commit private key. | `stat -c "%a %n" /home/onecode/lab/ec2-nethernode-v2/nethernode-v2*` | No commit unless docs change |
 | S11 | done | Final QA | Full suite, docs/harness alignment, no secrets, commits atomic. | `go test ./...`; `make validate`; Terraform validate; harness check | `docs: finalize NetherNode v2 operating docs` |
+| S12 | done | Persistent damage immunity | Image-bundled Paper plugin with `/nethernode damage off|on`, OP self-only permission, persistent plugin config. | Java 25/Paper JAR build, embedded-image hash match, full image build, harness validation. | `feat(runtime): add persistent damage immunity plugin` |
 
 ## Runtime Design Criteria
 
@@ -502,3 +503,11 @@ Append step evidence here.
 - Decision: use `MINECRAFT_STATUS_HOST` for public DNS/IP, preserve `MINECRAFT_PUBLIC_HOST` as a compatibility fallback, omit standard ports from mcstatus.io endpoints, and use container `rcon-cli` first. Add terminal-aware colored human status, `--color=auto|always|never`, and unchanged `--json` automation output.
 - Delivery: host installer now compiles the checkout in `golang:1.26-alpine` when neither local Go nor an explicit image binary is available, preventing fallback to the shell-only CLI. Live aux must set `MINECRAFT_STATUS_HOST=oneminecraft.duckdns.org`, reinstall CLI/scripts, then run `nethernode status`; no world, plugin, or backup mutation is required.
 - Live verification: aux pulled `cfa6a6a` then `645518f`; `.env` now has `MINECRAFT_STATUS_HOST=oneminecraft.duckdns.org`. Docker builder installed `/usr/local/bin/nethernode` as an x86_64 static ELF, without restarting `nethernode-minecraft`. `nethernode status` reported container healthy, RCON `docker exec rcon-cli` with `Sirius182` online, Java `Paper 26.1.2`, Bedrock `26.33`, disk `20G/6.7G/14G/34%`, and five backups. Pre/post backup-inventory SHA-256 was identical: `61334b4a5c827d09a55e9a3d023263d0640258a71f5180bee71108f5975450e5`.
+
+### Post-V2 maintenance - Persistent damage immunity (2026-07-11)
+
+- Scope: add a Paper-only, server-side `/nethernode damage off|on` command. No world, player NBT, backup, crossplay, IaC, or CI lifecycle changes.
+- Design: `NetherNodeAdmin` applies self-only state for an OP/`nethernode.damage` holder. `off` persists the player UUID; `on` removes it. Listener cancels their Paper damage events, avoiding the temporary-effect/death-reset weakness of `/effect resistance`.
+- Delivery: source is `server/plugins/nethernode-admin`; Maven builds it with Java 25 against Paper API `26.1.2.build.74-stable`. `server/Dockerfile` copies `NetherNodeAdmin.jar` into image `/plugins`, which itzg synchronizes to `/data/plugins` at container start. Persistent state lives only at `/data/plugins/NetherNodeAdmin/config.yml`, included in normal backups.
+- Verification: Docker Maven build generated a 6.4 KiB JAR containing class, `plugin.yml`, and `config.yml`; JAR SHA-256 `815bf8513b75a81efdf16dd1772240a7402d9a6fec9c4e044bc0e7f9582a9704`. Full `nethernode:admin-plugin` image build passed; image `/plugins/NetherNodeAdmin.jar` had identical SHA-256; `docker run --rm --entrypoint nethernode nethernode:admin-plugin help` passed.
+- Activation note: copying a new jar is non-mutating, but Paper loads it only on container start. Sync jar first; restart only after confirming no players need uninterrupted play. Never use Paper plugin reload. Snapshot backup inventory before and after any live action.
