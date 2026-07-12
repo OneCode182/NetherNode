@@ -308,8 +308,13 @@ cmd_stop() {
   (( only_ec2 && only_server )) && die '--only-ec2 and --only-server are mutually exclusive'
 
   state="$(ec2_state)"
+  if [[ "${state}" == 'stopped' ]]; then
+    info 'EC2 already stopped; nothing to stop.'
+    watch_after "${no_watch}"
+    return
+  fi
+
   if (( only_ec2 )); then
-    [[ "${state}" == 'stopped' ]] && { info 'EC2 already stopped.'; watch_after "${no_watch}"; return; }
     [[ "${state}" == 'running' ]] || die "cannot stop EC2 from state: ${state}"
     wait_for_ssh
     container_state="$(remote_container_state)" || die 'cannot inspect remote nethernode-minecraft container'

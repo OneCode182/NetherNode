@@ -282,13 +282,13 @@ function Invoke-Stop {
     Assert-Flags $Flags @('--only-ec2', '--only-server', '--no-watch')
     $onlyEc2 = $Flags -contains '--only-ec2'; $onlyServer = $Flags -contains '--only-server'
     $noWatch = $Flags -contains '--no-watch'
+    $info = Get-Ec2Info -Config $Config
+    if ($info.State -eq 'stopped') {
+        Write-Info 'EC2 already stopped; nothing to stop.'
+        if (-not $noWatch) { Show-Status -Config $Config }
+        return
+    }
     if ($onlyEc2) {
-        $info = Get-Ec2Info -Config $Config
-        if ($info.State -eq 'stopped') {
-            Write-Ok 'EC2 already stopped.'
-            if (-not $noWatch) { Show-Status -Config $Config }
-            return
-        }
         if ($info.State -ne 'running') { throw "EC2 is $($info.State); refusing stop." }
         if (Test-RemoteContainerRunning -Config $Config) { throw 'Refusing --only-ec2: server container is running. Stop server first.' }
         Stop-Ec2 -Config $Config

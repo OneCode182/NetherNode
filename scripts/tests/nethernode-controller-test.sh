@@ -138,6 +138,14 @@ assert_contains 'ec2 wait instance-status-ok' "${MOCK_LOG}"
 assert_not_contains 'ssh ' "${MOCK_LOG}"
 pass 'ec2-only start starts and waits without ssh'
 
+stopped_stop_output="${TMP_DIR}/stopped-stop.out"
+reset_mocks stopped
+run_controller stop --no-watch > "${stopped_stop_output}"
+assert_contains 'EC2 already stopped; nothing to stop.' "${stopped_stop_output}"
+assert_not_contains 'ssh ' "${MOCK_LOG}"
+assert_not_contains 'ec2 stop-instances' "${MOCK_LOG}"
+pass 'stopped stop exits without ssh or EC2 stop'
+
 refusal_output="${TMP_DIR}/refusal.out"
 reset_mocks running
 if MOCK_CONTAINER_STATE=true run_controller stop --only-ec2 --no-watch > "${refusal_output}" 2>&1; then
