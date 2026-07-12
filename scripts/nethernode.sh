@@ -212,7 +212,8 @@ remote_start_server() {
 }
 
 remote_container_state() {
-  remote_exec_at "${CURRENT_IP}" "docker inspect -f '{{.State.Running}}' nethernode-minecraft"
+  remote_exec_at "${CURRENT_IP}" \
+    "sudo -n docker info >/dev/null && { sudo -n docker inspect -f '{{.State.Running}}' nethernode-minecraft 2>/dev/null || printf 'missing\\n'; }"
 }
 
 status_once() {
@@ -321,7 +322,8 @@ cmd_stop() {
     if [[ "${container_state}" == 'true' ]]; then
       die 'refusing EC2 stop: nethernode-minecraft is running; stop server first'
     fi
-    [[ "${container_state}" == 'false' ]] || die "unexpected container state: ${container_state}"
+    [[ "${container_state}" == 'false' || "${container_state}" == 'missing' ]] \
+      || die "unexpected container state: ${container_state}"
     stop_ec2
   else
     [[ "${state}" == 'running' ]] || die "EC2 is ${state}; remote backup/stop unavailable"

@@ -156,6 +156,11 @@ assert_not_contains 'ec2 stop-instances' "${MOCK_LOG}"
 pass 'ec2-only stop refuses running remote container'
 
 reset_mocks running
+MOCK_CONTAINER_STATE=missing run_controller stop --only-ec2 --no-watch > /dev/null
+assert_contains 'ec2 stop-instances' "${MOCK_LOG}"
+pass 'ec2-only stop accepts an already removed server container'
+
+reset_mocks running
 run_controller stop --no-watch > /dev/null
 backup_line="$(line_number 'nethernode backup-server' "${MOCK_LOG}")"
 stop_server_line="$(line_number 'nethernode stop --no-backup' "${MOCK_LOG}")"
