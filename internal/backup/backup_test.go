@@ -119,6 +119,33 @@ func TestRunSourceMustBeDirectory(t *testing.T) {
 	}
 }
 
+func TestBackupSkipsUnreadablePluginUpdateLock(t *testing.T) {
+	tmp := t.TempDir()
+	source := filepath.Join(tmp, "source")
+	writeFixtureTree(t, source)
+	plugins := filepath.Join(source, "plugins")
+	if err := os.Mkdir(plugins, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(plugins, ".nethernode-plugin-update.lock"), nil, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(plugins, "settings.yml"), []byte("enabled: true"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Run(Options{SourceDir: source, DestDir: filepath.Join(tmp, "backups"), Label: "minecraft", Retention: 5}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := readArchive(t, result.ArchivePath)
+	if _, ok := files["plugins/.nethernode-plugin-update.lock"]; ok {
+		t.Fatal("transient lock must not be archived")
+	}
+	if files["plugins/settings.yml"] != "enabled: true" || files["world/level.dat"] != "level-data" {
+		t.Fatal("backup omitted plugin config or world data")
+	}
+}
+
 func TestRunCreatesReadableArchive(t *testing.T) {
 	tmp := t.TempDir()
 	sourceDir := filepath.Join(tmp, "source")

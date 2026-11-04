@@ -89,7 +89,7 @@ mkdir -p "${DEST_PATH}"
 if command -v docker >/dev/null 2>&1 && docker compose -f "${COMPOSE_FILE}" ps --services --filter status=running | grep -qx "minecraft"; then
   docker compose -f "${COMPOSE_FILE}" exec -T minecraft rcon-cli save-all flush || true
 fi
-tar -czf "${ARCHIVE_PATH}" -C "${SOURCE_PATH}" .
+tar --exclude='./plugins/.nethernode-plugin-update.lock' -czf "${ARCHIVE_PATH}" -C "${SOURCE_PATH}" .
 echo "Created ${ARCHIVE_PATH}"
 
 if [[ "${RETENTION}" -eq 0 ]]; then

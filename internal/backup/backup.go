@@ -172,6 +172,9 @@ func writeArchive(dest, sourceDir string) (int64, error) {
 		if relPath == "." {
 			return nil
 		}
+		if relPath == filepath.Join("plugins", ".nethernode-plugin-update.lock") && fi.Mode().IsRegular() {
+			return nil
+		}
 
 		var link string
 		if fi.Mode()&os.ModeSymlink != 0 {

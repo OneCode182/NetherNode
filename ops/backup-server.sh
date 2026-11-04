@@ -89,7 +89,7 @@ TMP_ARCHIVE="${BACKUP_DIR}/.${ARCHIVE_NAME}.tmp"
 
 log "Step 3/4: create backup archive: ${ARCHIVE_PATH}"
 rm -f "${TMP_ARCHIVE}"
-tar -czf "${TMP_ARCHIVE}" -C "${DATA_DIR}" .
+tar --exclude='./plugins/.nethernode-plugin-update.lock' -czf "${TMP_ARCHIVE}" -C "${DATA_DIR}" .
 mv "${TMP_ARCHIVE}" "${ARCHIVE_PATH}"
 sync
 
