@@ -51,9 +51,10 @@
 | Product goal or scope | `project/product-brief.md` |
 | Claude Code orchestration | `workflows/dynamic-workflows-claude-code.workflow.md` |
 | Codex orchestration | `workflows/dynamic-workflows-codex.workflow.md` |
+| NetherNode V2 orchestration | `workflows/dynamic-workflows-nethernode-v2-paper-go.workflow.md` |
 | AWS bootstrap deploy | `prompts/aws-bootstrap-deploy.prompt.md` |
 | AWS choice or cost/latency | `architecture/aws-options.architecture.md` |
-| Minecraft/Fabric/runtime | `architecture/minecraft-runtime.architecture.md` |
+| Minecraft/Paper/runtime | `architecture/minecraft-runtime.architecture.md` |
 | Metrics/alerts/backups | `architecture/observability.architecture.md` |
 | Full quality audit | `prompts/nethernode-quality-audit.prompt.md` |
 | Code relationship | `knowledge/graphify-operations.md`, then smallest graph shard |

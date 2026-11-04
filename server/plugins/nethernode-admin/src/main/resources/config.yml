@@ -1,0 +1,3 @@
+# UUIDs managed by /nethernode damage off|on. Keep this file under /data/plugins
+# so it is included in normal NetherNode backups.
+immune-player-uuids: []

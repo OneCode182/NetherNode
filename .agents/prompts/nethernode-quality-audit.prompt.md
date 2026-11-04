@@ -6,7 +6,7 @@ You are an independent senior architecture, DevOps, and software quality auditor
 
 Audit the current repo state end-to-end and verify whether NetherNode is solid, robust, scalable enough for its MVP, clear, low-coupled, well-documented, testable, and aligned with its harness memory.
 
-Primary goal: low-cost, manually started/stopped Minecraft Java/Fabric server on AWS, using the simplest functional architecture possible.
+Primary goal: low-cost, manually started/stopped Minecraft Paper crossplay server on AWS, using the simplest functional architecture possible.
 
 ## Required Context Loading
 
@@ -67,7 +67,7 @@ Verify:
 - `compose.yaml` has one `minecraft` service.
 - Persistent data path is configurable.
 - Java 25-compatible image is used.
-- Fabric defaults are explicit.
+- Paper defaults are explicit.
 
 Run:
 

@@ -2,7 +2,7 @@
 
 ## Mission
 
-Maintain local Minecraft Java/Fabric runtime and server ops.
+Maintain local Minecraft Paper crossplay runtime and server ops.
 
 ## Scope
 

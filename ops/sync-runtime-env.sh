@@ -23,6 +23,11 @@ set_env_value() {
     printf '%s=%s\n' "${key}" "${value}" >>"${tmp}"
   fi
 
+  # Preserve the target's owner/mode: mktemp files are 600 and, run via sudo,
+  # would flip .env to root-only, breaking the CLI's .env fallback for the
+  # invoking user.
+  chown --reference="${file}" "${tmp}" 2>/dev/null || true
+  chmod --reference="${file}" "${tmp}" 2>/dev/null || true
   mv "${tmp}" "${file}"
 }
 

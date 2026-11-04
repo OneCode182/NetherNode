@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "server/**"
+      - "cmd/**"
+      - "internal/**"
+      - "go.mod"
+      - ".dockerignore"
       - "compose.yaml"
       - ".env.example"
       - ".github/workflows/image.yml"
@@ -12,6 +16,10 @@ on:
       - master
     paths:
       - "server/**"
+      - "cmd/**"
+      - "internal/**"
+      - "go.mod"
+      - ".dockerignore"
       - "compose.yaml"
       - ".env.example"
       - ".github/workflows/image.yml"
@@ -61,7 +69,7 @@ jobs:
       - name: Build and publish
         uses: docker/build-push-action@v6
         with:
-          context: server
+          context: .
           file: server/Dockerfile
           push: ${{ steps.image.outputs.push == 'true' }}
           tags: |

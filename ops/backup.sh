@@ -7,7 +7,7 @@ DRY_RUN="false"
 SOURCE_PATH="${BACKUP_SOURCE:-${PROJECT_ROOT}/data/minecraft}"
 DEST_PATH="${BACKUP_DEST:-${PROJECT_ROOT}/backups}"
 COMPOSE_FILE="${COMPOSE_FILE:-${PROJECT_ROOT}/compose.yaml}"
-RETENTION="${BACKUP_RETENTION:-7}"
+RETENTION="${BACKUP_RETENTION:-5}"
 LABEL="${BACKUP_LABEL:-minecraft}"
 
 print_help() {
@@ -16,7 +16,7 @@ Usage:
   backup.sh [--source <path>] [--dest <path>] [--retention <n>] [--label <name>] [--dry-run]
 
 Example:
-  ./ops/backup.sh --source ./data/minecraft --dest ./backups --retention 7 --label mc
+  ./ops/backup.sh --source ./data/minecraft --dest ./backups --retention 5 --label mc
 EOF
 }
 
@@ -89,7 +89,7 @@ mkdir -p "${DEST_PATH}"
 if command -v docker >/dev/null 2>&1 && docker compose -f "${COMPOSE_FILE}" ps --services --filter status=running | grep -qx "minecraft"; then
   docker compose -f "${COMPOSE_FILE}" exec -T minecraft rcon-cli save-all flush || true
 fi
-tar -czf "${ARCHIVE_PATH}" -C "${SOURCE_PATH}" .
+tar --exclude='./plugins/.nethernode-plugin-update.lock' -czf "${ARCHIVE_PATH}" -C "${SOURCE_PATH}" .
 echo "Created ${ARCHIVE_PATH}"
 
 if [[ "${RETENTION}" -eq 0 ]]; then

@@ -1,6 +1,6 @@
 # NetherNode
 
-Ephemeral Minecraft Java/Fabric server platform on AWS, with containers, IaC, backups, observability, dynamic workflow harness, and low-cost start/stop operations.
+Ephemeral Minecraft Paper crossplay server platform on AWS, with containers, IaC, backups, observability, dynamic workflow harness, and low-cost start/stop operations.
 
 ## Agent Harness
 
@@ -25,7 +25,7 @@ Step work must follow `.agents/workflows/nethernode-step.workflow.md`:
 
 Services:
 
-- `minecraft`: single Fabric-capable Minecraft Java server.
+- `minecraft`: single PaperMC server (Java TCP `25565`, Bedrock UDP `19132` reserved for Geyser crossplay).
 
 The repo builds a thin wrapper image from `server/Dockerfile`, based on
 `itzg/minecraft-server:stable-java25`. Runtime defaults live in
@@ -53,7 +53,184 @@ make observability
 Ports:
 
 - Java: `25565/tcp`
-- Bedrock/Geyser future path: `19132/udp`
+- Bedrock/Geyser: `19132/udp`
+
+## Crossplay
+
+Managed Paper plugin stack, declared in `server/plugins.manifest` and synced by
+`nethernode plugins sync` (`ops/plugins-sync.sh`):
+
+- Geyser-Spigot: Bedrock clients join over UDP `19132`.
+- Floodgate-Spigot: Bedrock players join without a Java account; its signing
+  key persists at `/data/plugins/floodgate/key.pem`.
+- ViaVersion: newer Java clients on an older server protocol.
+- ViaBackwards: older Java clients on a newer server protocol.
+- SkinsRestorer: restores and lets offline-mode Java players set their own
+  skins. Its persistent plugin data lives under
+  `/data/plugins/SkinsRestorer` and is included in normal world backups.
+- BlueMap: 3D web map of the world at `http://<host>:8100` (compose maps the
+  port; infra opens it via opt-in `enable_bluemap_ingress`). First render
+  takes a while after install.
+- Chunky: pre-generates chunks around spawn (`chunky radius 1500` +
+  `chunky start` via console/RCON) so exploration does not hit generation lag.
+- HuskHomes: `/sethome`, `/tpa`, `/warp`, `/back` quality-of-life commands
+  (optional manifest entry; sync skips it when no release matches the configured
+  Minecraft version).
+- TAB + PlaceholderAPI (Player expansion): view-only player info for everyone
+  — tab list shows `❤ health Lv xp | (x, y, z) | ping ms` per player, and a
+  bare 5-segment health bar (20% per segment) floats above each head in
+  proximity (template: `server/config/tab/config.yml`).
+
+```bash
+make plugins-sync-dry-run   # resolve versions, print plan
+make plugins-sync           # download jars into data/minecraft/plugins
+make plugins-list           # offline manifest + installed jars
+```
+
+### Geyser bundle updates on EC2
+
+The installed Go CLI supports a bounded updater for Geyser-Spigot, ViaVersion,
+and ViaBackwards. It resolves official Geyser builds plus a matching Via release
+pair for the live Paper game version. When the server cannot be queried during
+checking/staging, it uses the configured Minecraft version and warns; applying
+always requires the live Paper version to match the staged bundle.
+
+```bash
+sudo nethernode plugins check geyser
+sudo nethernode plugins update geyser
+sudo nethernode --dry-run plugins update geyser --apply
+sudo nethernode plugins update geyser --apply
+sudo nethernode plugins rollback geyser --apply
+```
+
+`check` queries official metadata, reads installed JARs, and uses Docker/RCON
+to identify the live Paper version when available. `update` downloads and
+verifies the three artifacts, records the installed JAR baseline, and stages
+them without changing the running server. `--apply` consumes that exact staged
+bundle without network access. It refuses changed JARs, duplicate or missing
+plugins, a stopped server, unknown/disabled plugin state, version mismatches,
+or connected players. Global `--dry-run` performs no network, Docker, RCON, or
+filesystem writes; it does not resolve live versions.
+
+Apply acquires the same Linux lock used by plugin sync, confirms successful
+save/flush and autosave pause, creates and fully verifies a uniquely named full
+backup, restores autosave, then rechecks players and JARs. It stops and starts
+the existing Minecraft container without image pulls or recreation. Only the
+three selected JARs and their managed-state rows change. Geyser/Floodgate
+configs, Floodgate keys, worlds, other plugins, and existing backup archives
+are preserved. Successful plugin-update backups remain available for manual
+recovery and are not pruned automatically by this command.
+
+Startup checks require RCON readiness, enabled trio entries, expected plugin
+versions, the selected Geyser build, and reported Bedrock `26.52` support. A
+failed activation triggers JAR rollback and another health check. Rollback
+does not restore the world or revert plugin config migrations; the full backup
+is retained for operator recovery. Verify both Java and actual Bedrock `26.52`
+logins after activation; version/status output cannot prove player login.
+
+Updater state defaults to a private sibling of the Minecraft data directory,
+`/opt/nethernode/data/.nethernode-plugin-updates` on EC2. Override with
+`NETHERNODE_PLUGIN_UPDATE_DIR` outside Minecraft data and backups. Keep the
+`staged` and `rollback` directories private. An interrupted transaction retains
+`.rollback-pending` for operator recovery and blocks later applies; inspect
+that transaction before attempting another update. Install the new Go CLI on
+the chosen EC2 host before using these commands; the legacy shell fallback
+does not implement them. These commands do not add a scheduler or Minecraft
+console command.
+
+Geyser config template (`server/config/geyser/config.yml`) is installed only
+when missing: `bedrock 0.0.0.0:19132`, `remote 127.0.0.1:25565`,
+`auth-type: floodgate`.
+
+Compatibility notes:
+
+- Nintendo Switch cannot add servers directly; players set console Primary DNS
+  to a BedrockConnect address and pick the server from its menu
+  (see https://geysermc.org/wiki/geyser/using-geyser-with-consoles/).
+- Via plugins do not promise every historical/future version; Mojang protocol
+  changes can require plugin updates.
+- Checked 2026-10-15: Geyser's [official supported-versions page](https://geysermc.org/wiki/geyser/supported-versions/)
+  lists Bedrock `26.30` through `26.52`. These are client versions, not Geyser
+  release numbers. Older Paper versions need compatible ViaVersion protocol
+  translation; upstream support can change independently of the installed JARs.
+  Use `nethernode plugins check geyser`, then stage with
+  `nethernode plugins update geyser`; apply the verified bundle during an
+  empty-server maintenance window. The updater selects a matching Via release
+  pair for the live Paper version and checks reported Bedrock `26.52` support
+  after activation. Confirm actual Java and Bedrock logins before declaring
+  crossplay healthy.
+
+### Offline-Mode Skins
+
+`SkinsRestorer` is managed through `server/plugins.manifest`; do not download a
+jar manually. `nethernode plugins sync` installs it into the persistent
+`/data/plugins` volume, never touches `world/` or `/opt/nethernode/backups`,
+and removes only a superseded SkinsRestorer jar during an upgrade.
+
+On EC2, the installed CLI automatically resolves the tracked app at
+`/opt/nethernode/app` and persistent plugin volume at
+`/opt/nethernode/data/minecraft`; `nethernode plugins list` and
+`nethernode plugins sync` work from any current directory.
+
+No custom permission config is required for this private server. SkinsRestorer
+grants its `skinsrestorer.player` group to every player by default. Do not grant
+`skinsrestorer.admin` to normal players: it permits changing other players'
+skins and plugin administration.
+
+Java players can run these in Minecraft after the plugin loads:
+
+```text
+/skin upload
+/skin url <direct-64x64-png-url>
+/skin clear
+```
+
+`/skin upload` gives the player an upload flow; `/skin url` accepts a direct
+PNG skin URL. The selected skin persists for that offline-mode Java identity
+and is shown to other Java players. Bedrock/Switch players keep their Bedrock
+profile skin through Floodgate/Geyser; SkinsRestorer does not replace the
+Switch account avatar. If a non-admin receives a permission error, first check
+whether a later-installed permissions plugin overrides the default
+`skinsrestorer.player` grant.
+
+After a plugin sync, restart only the Minecraft container and verify from an
+admin account:
+
+```text
+/plugins
+/skin
+```
+
+`SkinsRestorer` must appear in the plugin list. The server restart does not
+reset world, player, or backup data because they are bind-mounted outside the
+container.
+
+### Persistent Damage Immunity
+
+The runtime image includes the small Paper plugin `NetherNodeAdmin`. It adds a
+private-server command with no client mod required:
+
+```text
+/nethernode damage off
+/nethernode damage on
+```
+
+`off` enables immunity for the operator executing the command; `on` gives that
+same player normal damage again. Permission `nethernode.damage` defaults to
+Paper operators. There is intentionally no target parameter, so one admin
+cannot silently change another player's immunity through this command.
+
+This is persistent server-side state, not a temporary potion effect. The plugin
+cancels damage events for the selected UUID and writes only
+`/data/plugins/NetherNodeAdmin/config.yml`. It survives death, reconnects, and
+container restarts until `/nethernode damage on`; normal NetherNode backups
+include the config. It never edits `world/`, player NBT, or backup archives.
+
+The image copies `NetherNodeAdmin.jar` from `/plugins` to persistent
+`/data/plugins` at container startup. A newly deployed Paper plugin requires a
+safe Minecraft container restart to load. Do not use Paper runtime plugin
+reload; it is unsafe. The restart preserves world, player, plugin-config, and
+backup data because those paths are mounted outside the container.
 
 ## Lean AWS Runtime
 
@@ -85,10 +262,31 @@ No `terraform apply` in this workflow without explicit human approval.
 ## GitHub CI/CD
 
 Validation is split by path filters: `ci.yml` validates compose and scripts on
-every push/PR; `image.yml` validates the Docker build when `server/` or compose
-files change; `infra-validate.yml` validates Terraform when `infra/` changes.
-On push to `main`, `.github/workflows/image.yml` publishes the Minecraft image
+every push/PR; `image.yml` validates the Docker build when `server/`, `cmd/`,
+`internal/`, `go.mod`, or compose files change; `infra-validate.yml` validates
+Terraform when `infra/` changes. On push to `master`,
+`.github/workflows/image.yml` publishes the Minecraft image
 to GHCR.
+
+The image is built from the repo root so it can package the Go CLI into the
+runtime image:
+
+```bash
+docker build -f server/Dockerfile -t nethernode:local .
+docker run --rm --entrypoint nethernode nethernode:local help
+```
+
+To install the exact CLI binary from an image on the host:
+
+```bash
+sudo NETHERNODE_CLI_IMAGE=ghcr.io/<owner>/nethernode:latest \
+  bash ops/install-server-cli.sh
+```
+
+When the host has neither Go nor a published image reference, the installer
+builds the current checkout with `golang:1.26-alpine` through Docker. This keeps
+`/usr/local/bin/nethernode` on the Go CLI instead of falling back to the
+shell-only compatibility wrapper.
 
 Manual cloud controls:
 
@@ -111,6 +309,88 @@ Optional DuckDNS settings:
 
 GHCR package should be public for the EC2 host to pull without storing GitHub
 tokens on the instance.
+
+No-reset policy:
+
+- PR and merge workflows (`ci.yml`, `image.yml`, `infra-validate.yml`) only
+  validate/build/publish. They must not start, stop, restart, or mutate the EC2
+  Minecraft runtime or `/opt/nethernode/data/minecraft`.
+- Manual lifecycle workflows (`start-server.yml`, `stop-server.yml`) are the
+  only workflows allowed to send SSM commands or start/stop EC2.
+- `ops/check-ci-no-reset.sh` enforces this split in `make validate`.
+
+## Local Cloud Controller
+
+Use the controller for an operator's cross-platform, manual cloud actions. It
+does not replace the canonical CI/CD path: GitHub Actions continues to use OIDC
+and SSM. The controller currently uses SSH only as an auxiliary local
+convenience path; enable SSH on the EC2 host and restrict its security-group
+ingress to trusted operator addresses before using it.
+
+Prerequisites:
+
+- AWS CLI installed and authenticated through its normal credential chain
+  (`aws configure`, SSO, or another supported local profile).
+- OpenSSH client installed.
+- Private key loaded by `ssh-agent` on Linux/macOS or Windows OpenSSH agent.
+- Copy config once; it is intentionally ignored by Git:
+
+  ```bash
+  cp scripts/nethernode.env.example scripts/nethernode.local.env
+  ```
+
+  ```powershell
+  Copy-Item scripts/nethernode.env.example scripts/nethernode.local.env
+  ```
+
+Set `AWS_REGION`, `EC2_INSTANCE_ID`, `SSH_USER`, `SSH_KEY_PATH`, and optional
+`MINECRAFT_STATUS_HOST` in that local file. Process environment values override
+the file, and `NETHERNODE_CLOUD_ENV` can select another local config path.
+Never store Git or SSH key passphrases in the config or repo. The controller
+does no Git work, so it never needs a Git passphrase; key unlock belongs to the
+OS SSH agent.
+
+Linux Bash controller, including fish shells (Bash runs directly):
+
+```fish
+./scripts/nethernode.sh status
+./scripts/nethernode.sh start
+./scripts/nethernode.sh stop --no-watch
+```
+
+Windows controller:
+
+```powershell
+.\scripts\nethernode.ps1 status
+.\scripts\nethernode.bat status
+```
+
+Commands:
+
+```text
+status [--once]
+start [--only-ec2 | --only-server] [--no-watch]
+stop [--only-ec2 | --only-server] [--no-watch]
+restart [--no-watch]
+save
+backup
+```
+
+`status` refreshes in place until `Ctrl+C`; `status --once` prints one poll.
+`start` and `stop` enter status watching by default; use `--no-watch` for one
+command then exit. Each poll gets the current public IP from AWS. The remote
+`nethernode status` command owns domain/public game status, using
+`MINECRAFT_STATUS_HOST` when configured.
+
+Stop safety is fixed: `nethernode backup-server` ->
+`nethernode stop --no-backup` -> EC2 stop. `stop --only-ec2` refuses while the
+Minecraft container is running. The controller never calls EC2 termination.
+`restart` backs up before restarting the server; when EC2 is stopped it starts
+the normal server path instead.
+
+Remote sync/pull helpers must never modify `/opt/nethernode/data` or
+`/opt/nethernode/backups`; these paths remain persistent world and backup
+ownership boundaries.
 
 ## Cost Model
 
@@ -135,10 +415,173 @@ Scripts:
 - `ops/start.sh`: syncs runtime env, pulls image, starts compose, updates DuckDNS when configured.
 - `ops/stop-safe.sh`: RCON save + backup + stop + compose down.
 - `ops/backup.sh`: RCON save + tar backup + retention.
+- `ops/save-server.sh`: force-save full world/player state with RCON.
+- `ops/backup-server.sh`: force-save, create backup archive, keep newest 5 backups.
+- `ops/install-server-cli.sh`: installs the Go `/usr/local/bin/nethernode`
+  CLI and `/opt/nethernode/scripts/*` on the EC2 host. It uses local Go, an
+  explicit runtime image, or a temporary Docker Go builder in that order.
+- `ops/nethernode`: legacy shell wrapper kept as a local/fallback helper.
 - `ops/restore.sh`: restore archive into world dir.
 - `ops/observability.sh`: local status/metrics checks (container, RCON players,
   stats, disk free vs the >20% target, backup count/sizes).
 - `ops/dns-update.sh`: DuckDNS update with token redaction in dry-run.
+
+### CLI Status
+
+`nethernode status` combines local container/RCON/storage checks with public
+Java and Bedrock checks through mcstatus.io. Configure the public hostname on
+the EC2 host, never `localhost`:
+
+```bash
+cd /opt/nethernode/app
+printf '\nMINECRAFT_STATUS_HOST=oneminecraft.duckdns.org\n' | sudo tee -a .env >/dev/null
+sudo /usr/local/bin/nethernode status
+```
+
+With default ports, it queries exactly:
+
+```text
+https://api.mcstatus.io/v2/status/java/oneminecraft.duckdns.org
+https://api.mcstatus.io/v2/status/bedrock/oneminecraft.duckdns.org
+```
+
+For nonstandard configured ports, the CLI adds `:<port>` automatically. RCON
+status uses `docker exec nethernode-minecraft rcon-cli list` first, then the Go
+TCP client only as fallback. Human output colors itself on a terminal; use
+`nethernode status --color=never` for logs or `nethernode status --json` for
+automation. `--host <public-dns-or-ip>` overrides the configured host once.
+
+### World Save And Backup Safety
+
+`rcon-cli save-all flush` sends Minecraft's `save-all flush` command through
+RCON. It forces the running server to write the current world and player state
+to disk before the next operation continues. This includes chunks, player
+position, inventory, XP, stats, advancements, `level.dat`, and runtime files
+persisted under `/opt/nethernode/data/minecraft`.
+
+This command does not create a backup by itself. In NetherNode, `ops/backup.sh`
+uses it first, then creates a `.tar.gz` archive in `/opt/nethernode/backups`.
+`ops/stop-safe.sh` uses the safer shutdown sequence: `save-all flush`, backup,
+server stop, then `docker compose down`.
+
+The EC2 deploy workflow installs a host CLI:
+
+```bash
+nethernode save-server
+nethernode backup-server
+```
+
+`nethernode save-server` only flushes world/player state to disk.
+`nethernode backup-server` flushes state, pauses autosave while archiving,
+creates a `.tar.gz` under `/opt/nethernode/backups`, then keeps only the newest
+5 backups by default.
+
+Run a manual world save:
+
+```bash
+sudo docker exec nethernode-minecraft rcon-cli save-all flush
+```
+
+Create a backup while keeping only the newest local backup:
+
+```bash
+cd /opt/nethernode/app
+
+sudo BACKUP_SOURCE=/opt/nethernode/data/minecraft \
+  BACKUP_DEST=/opt/nethernode/backups \
+  BACKUP_RETENTION=1 \
+  COMPOSE_FILE=/opt/nethernode/app/compose.yaml \
+  bash ops/backup.sh
+```
+
+Safely stop the server while keeping only the newest local backup:
+
+```bash
+cd /opt/nethernode/app
+
+sudo BACKUP_SOURCE=/opt/nethernode/data/minecraft \
+  BACKUP_DEST=/opt/nethernode/backups \
+  BACKUP_RETENTION=1 \
+  COMPOSE_FILE=/opt/nethernode/app/compose.yaml \
+  bash ops/stop-safe.sh
+```
+
+Use `BACKUP_RETENTION=1` for a low-disk policy that leaves only the latest
+backup archive. Do not use `BACKUP_RETENTION=0` to mean "keep one"; in the
+current script, `0` skips pruning after creating the new archive. Stopping and
+starting the EC2 instance preserves the world as long as the backing EBS volume
+is not deleted or the instance is not terminated with delete-on-termination
+enabled.
+
+### Paper Migration Runbook
+
+Use this when moving an existing world into the Paper crossplay runtime or when
+validating a Fabric-like world after the runtime change. Do this repo-only or on
+a staging path first; do not overwrite the live world until verification passes.
+
+1. Save and backup current world:
+
+   ```bash
+   nethernode save-server
+   nethernode backup-server --retention 5
+   ```
+
+2. Restore the backup into staging, never straight over live data first:
+
+   ```bash
+   cd /opt/nethernode/app
+
+   bash ops/restore.sh \
+     --archive /opt/nethernode/backups/<backup>.tar.gz \
+     --target /opt/nethernode/staging/paper-migration \
+     --dry-run
+
+   bash ops/restore.sh \
+     --archive /opt/nethernode/backups/<backup>.tar.gz \
+     --target /opt/nethernode/staging/paper-migration
+   ```
+
+3. Preserve these files/directories from `/opt/nethernode/data/minecraft`:
+   `world/`, `world_nether/`, `world_the_end/`, `level.dat`, `playerdata/`,
+   `stats/`, `advancements/`, `ops.json`, `whitelist.json`,
+   `banned-players.json`, `banned-ips.json`, `usercache.json`,
+   `server.properties`, `plugins/`, and `config/` when already Paper/Geyser
+   managed.
+
+4. Do not migrate active Fabric-only runtime folders as Paper features:
+   `mods/`, Fabric loader/libs, and Fabric-only config. Keep them in the backup
+   archive for rollback evidence, but treat them as inert under Paper.
+
+5. Keep `online-mode=false` for the first Paper migration if the existing world
+   was played in offline mode. This preserves current offline UUIDs for player
+   inventory, XP, position, stats, advancements, and admin entries. Moving to
+   `online-mode=true` is a separate migration requiring UUID mapping; doing it
+   casually can make players appear as new users with empty inventories.
+
+6. Verify Paper before replacing live data:
+
+   ```bash
+   docker compose -f compose.yaml config -q
+   nethernode plugins list
+   nethernode status --dry-run
+   rg -n "online-mode|level-name|white-list" /opt/nethernode/staging/paper-migration/server.properties
+   ```
+
+   Then perform a real smoke test on a disposable/staging host: Java client
+   join, Bedrock/Geyser join when upstream version support exists, admin
+   command check, inventory/XP/position check, and short play/save/restart check.
+
+7. Roll back by stopping the server and restoring the known-good backup into the
+   live target only after confirming the target:
+
+   ```bash
+   cd /opt/nethernode/app
+
+   bash ops/restore.sh \
+     --archive /opt/nethernode/backups/<known-good>.tar.gz \
+     --target /opt/nethernode/data/minecraft \
+     --force
+   ```
 
 Manual checks without a script:
 
@@ -155,6 +598,14 @@ Manual checks without a script:
 The app boundary is intentionally portable: Docker Compose + env file + volume.
 To migrate later, keep `server/`, `compose.yaml`, and `ops/` mostly unchanged;
 replace only `infra/` and GitHub AWS role usage with Azure VM/IAM equivalents.
+
+An Azure extension scaffold lives in `infra/azure/`. It is validate-only in the
+V2 workflow and must not be applied without explicit approval:
+
+```bash
+terraform -chdir=infra/azure init -backend=false
+terraform -chdir=infra/azure validate
+```
 
 ## Graphify
 

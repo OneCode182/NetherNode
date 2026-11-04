@@ -13,6 +13,15 @@ systemctl enable docker
 systemctl start docker
 usermod -aG docker ec2-user || true
 
+# AL2023's docker package ships without the compose plugin; ops/start.sh
+# depends on `docker compose`.
+if ! docker compose version >/dev/null 2>&1; then
+  mkdir -p /usr/local/lib/docker/cli-plugins
+  curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-$(uname -m)" \
+    -o /usr/local/lib/docker/cli-plugins/docker-compose
+  chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+fi
+
 mkdir -p "${app_repo_clone_path}"
 mkdir -p /opt/nethernode/data/minecraft /opt/nethernode/backups
 chown -R ec2-user:ec2-user /opt/nethernode

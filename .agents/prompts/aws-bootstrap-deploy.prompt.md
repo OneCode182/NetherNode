@@ -8,7 +8,7 @@ You are deployment leader for NetherNode. System is CachyOS + fish shell. AWS CL
 
 Provision and verify NetherNode initial AWS architecture using AWS CLI + IaC + repo ops.
 
-Goal: low-cost, portable, parametrizable Minecraft Java/Fabric server on AWS, easy to switch EC2 type, EC2 instance, region, or later cloud provider.
+Goal: low-cost, portable, parametrizable Minecraft Paper crossplay server on AWS, easy to switch EC2 type, EC2 instance, region, or later cloud provider.
 
 Do not rush. Read harness first, ask blocking questions, then execute step-by-step.
 
