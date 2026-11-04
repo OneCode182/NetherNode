@@ -39,6 +39,22 @@ type Result struct {
 // old archives for Label beyond Retention. The archive is written to a
 // temporary file first and moved into place with os.Rename for atomicity.
 func Run(opts Options, now time.Time) (*Result, error) {
+	if opts.Retention < 1 {
+		return nil, fmt.Errorf("backup: retention must be a positive integer, got %d", opts.Retention)
+	}
+	result, err := Create(opts, now)
+	if err != nil {
+		return nil, err
+	}
+	result.Removed, err = Prune(opts.DestDir, opts.Label, opts.Retention)
+	if err != nil {
+		return nil, fmt.Errorf("backup: prune after archive: %w", err)
+	}
+	return result, nil
+}
+
+// Create writes one complete archive without pruning existing backups.
+func Create(opts Options, now time.Time) (*Result, error) {
 	if opts.SourceDir == "" {
 		return nil, fmt.Errorf("backup: source dir is required")
 	}
@@ -48,10 +64,6 @@ func Run(opts Options, now time.Time) (*Result, error) {
 	if opts.Label == "" {
 		return nil, fmt.Errorf("backup: label is required")
 	}
-	if opts.Retention < 1 {
-		return nil, fmt.Errorf("backup: retention must be a positive integer, got %d", opts.Retention)
-	}
-
 	info, err := os.Stat(opts.SourceDir)
 	if err != nil {
 		return nil, fmt.Errorf("backup: source dir: %w", err)
@@ -92,16 +104,48 @@ func Run(opts Options, now time.Time) (*Result, error) {
 		return nil, fmt.Errorf("backup: rename archive into place: %w", err)
 	}
 
-	removed, err := Prune(opts.DestDir, opts.Label, opts.Retention)
-	if err != nil {
-		return nil, fmt.Errorf("backup: prune after archive: %w", err)
-	}
-
 	return &Result{
 		ArchivePath: archivePath,
 		Size:        size,
-		Removed:     removed,
 	}, nil
+}
+
+// VerifyArchive reads the entire gzip-compressed tar archive to validate its
+// headers, payloads, and gzip trailer before callers rely on it for recovery.
+func VerifyArchive(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("backup: open archive: %w", err)
+	}
+	defer file.Close()
+
+	compressed, err := gzip.NewReader(file)
+	if err != nil {
+		return fmt.Errorf("backup: open gzip archive: %w", err)
+	}
+	reader := tar.NewReader(compressed)
+	for {
+		_, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			_ = compressed.Close()
+			return fmt.Errorf("backup: read tar archive: %w", err)
+		}
+		if _, err := io.Copy(io.Discard, reader); err != nil {
+			_ = compressed.Close()
+			return fmt.Errorf("backup: read tar payload: %w", err)
+		}
+	}
+	if _, err := io.Copy(io.Discard, compressed); err != nil {
+		_ = compressed.Close()
+		return fmt.Errorf("backup: read gzip trailer: %w", err)
+	}
+	if err := compressed.Close(); err != nil {
+		return fmt.Errorf("backup: close gzip archive: %w", err)
+	}
+	return nil
 }
 
 // writeArchive walks sourceDir and writes a gzip-compressed tar of its

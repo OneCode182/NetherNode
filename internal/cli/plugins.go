@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 )
 
-// CmdPlugins keeps plugin management reachable from the Go CLI while the
-// resolver/installer remains the battle-tested shell helper. The Go binary is
-// the user-facing root; the script is the bounded system integration point.
+// CmdPlugins routes legacy full sync/list commands to the shell helper and
+// fixed Geyser bundle operations to the transactional Go updater.
 func CmdPlugins(a *App, args []string) error {
 	sub := "list"
 	rest := args
@@ -21,8 +20,10 @@ func CmdPlugins(a *App, args []string) error {
 		return a.runPluginScript(rest...)
 	case "list":
 		return a.runPluginScript(append([]string{"--list"}, rest...)...)
+	case "check", "update", "rollback":
+		return a.runPluginUpdate(sub, rest)
 	default:
-		return fmt.Errorf("plugins: unknown subcommand %q (want sync|list)", sub)
+		return fmt.Errorf("plugins: unknown subcommand %q (want sync|list|check|update|rollback)", sub)
 	}
 }
 

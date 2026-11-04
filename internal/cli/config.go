@@ -15,9 +15,11 @@ import (
 // Config holds every environment-derived setting the CLI needs. Defaults
 // match the repo's local compose.yaml / .env.example values.
 type Config struct {
-	ContainerName string // MINECRAFT_CONTAINER_NAME
-	ComposeFile   string // COMPOSE_FILE
-	DataDir       string // MINECRAFT_DATA_DIR
+	ContainerName    string // MINECRAFT_CONTAINER_NAME
+	ComposeFile      string // COMPOSE_FILE
+	DataDir          string // MINECRAFT_DATA_DIR
+	MinecraftVersion string // MINECRAFT_VERSION
+	PluginUpdateDir  string // NETHERNODE_PLUGIN_UPDATE_DIR
 
 	BackupDest      string // BACKUP_DEST
 	BackupRetention int    // BACKUP_RETENTION
@@ -142,10 +144,26 @@ func LoadConfigFromRoot(root string, getenv getenvFunc, readFile readFileFunc) C
 		return dotenv[key]
 	}
 
+	dataDir := rootJoin(root, firstNonEmpty(lookup("MINECRAFT_DATA_DIR"), "./data/minecraft"))
+	pluginUpdateDir := lookup("NETHERNODE_PLUGIN_UPDATE_DIR")
+	if pluginUpdateDir == "" {
+		pluginUpdateDir = filepath.Join(filepath.Dir(dataDir), ".nethernode-plugin-updates")
+	} else {
+		pluginUpdateDir = rootJoin(root, pluginUpdateDir)
+	}
+	minecraftVersion := lookup("MINECRAFT_VERSION")
+	if minecraftVersion == "" {
+		if runtimeEnv, err := readFile(rootJoin(root, filepath.Join("server", "runtime.env"))); err == nil {
+			minecraftVersion = parseDotenv(runtimeEnv)["MINECRAFT_VERSION"]
+		}
+	}
+
 	cfg := Config{
-		ContainerName: firstNonEmpty(lookup("MINECRAFT_CONTAINER_NAME"), "nethernode-minecraft"),
-		ComposeFile:   rootJoin(root, firstNonEmpty(lookup("COMPOSE_FILE"), "compose.yaml")),
-		DataDir:       rootJoin(root, firstNonEmpty(lookup("MINECRAFT_DATA_DIR"), "./data/minecraft")),
+		ContainerName:    firstNonEmpty(lookup("MINECRAFT_CONTAINER_NAME"), "nethernode-minecraft"),
+		ComposeFile:      rootJoin(root, firstNonEmpty(lookup("COMPOSE_FILE"), "compose.yaml")),
+		DataDir:          dataDir,
+		MinecraftVersion: minecraftVersion,
+		PluginUpdateDir:  pluginUpdateDir,
 
 		BackupDest:      rootJoin(root, firstNonEmpty(lookup("BACKUP_DEST"), "./backups")),
 		BackupRetention: firstPositiveInt(lookup("BACKUP_RETENTION"), 5),

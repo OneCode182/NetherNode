@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/onecode182/nethernode/internal/backup"
@@ -45,11 +46,14 @@ type App struct {
 	Stderr io.Writer
 	DryRun bool
 
-	Now      func() time.Time
-	Compose  *compose.Runner
-	DialRCON rconDialer
-	MCStatus mcstatusClient
-	Backup   backupRunner
+	Now                  func() time.Time
+	Compose              *compose.Runner
+	DialRCON             rconDialer
+	MCStatus             mcstatusClient
+	Backup               backupRunner
+	PluginHTTPClient     *http.Client
+	PluginHealthAttempts int
+	PluginHealthDelay    time.Duration
 }
 
 // NewApp builds an App wired to the real environment (docker compose,
@@ -65,9 +69,12 @@ func NewApp(cfg Config, stdout, stderr io.Writer, dryRun bool) *App {
 			ComposeFile: cfg.ComposeFile,
 			DryRun:      dryRun,
 		},
-		DialRCON: defaultDialRCON,
-		MCStatus: mcstatus.New(),
-		Backup:   backup.Run,
+		DialRCON:             defaultDialRCON,
+		MCStatus:             mcstatus.New(),
+		Backup:               backup.Run,
+		PluginHTTPClient:     &http.Client{Timeout: 45 * time.Second},
+		PluginHealthAttempts: 60,
+		PluginHealthDelay:    2 * time.Second,
 	}
 }
 

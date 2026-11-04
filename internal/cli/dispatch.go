@@ -30,8 +30,16 @@ Commands:
   settings get <key>            Print a server.properties value.
   settings set <key> <value>    Atomically patch server.properties.
     [--apply]                     Also apply live via RCON when possible.
+  world list                    List selectable world directories.
+  world get                     Print the configured level-name.
+  world set <name> [--apply]    Atomically patch level-name; optionally restart.
   plugins sync [--dry-run]      Sync managed Paper crossplay plugins.
   plugins list                  List managed plugin manifest/install state.
+  plugins check geyser           Check live/configured MC via Docker/RCON and latest bundle.
+  plugins update geyser          Download and verify the fixed bundle only.
+    [--apply]                     Apply previously staged bundle; requires no players.
+  plugins rollback geyser --apply
+                                Restore previous trio of JARs safely.
 
 Global flags:
   --dry-run   Print planned actions/commands and exit 0 without touching
@@ -87,6 +95,7 @@ var lifecycleCommands = map[string]func(*App, []string) error{
 	"backup-server": CmdBackupServer,
 	"admin":         CmdAdmin,
 	"settings":      CmdSettings,
+	"world":         CmdWorld,
 	"plugins":       CmdPlugins,
 }
 

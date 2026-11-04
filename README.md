@@ -74,7 +74,8 @@ Managed Paper plugin stack, declared in `server/plugins.manifest` and synced by
 - Chunky: pre-generates chunks around spawn (`chunky radius 1500` +
   `chunky start` via console/RCON) so exploration does not hit generation lag.
 - HuskHomes: `/sethome`, `/tpa`, `/warp`, `/back` quality-of-life commands
-  (no `26.2` build published yet — resolves on `26.1.x`, same wait as Geyser).
+  (optional manifest entry; sync skips it when no release matches the configured
+  Minecraft version).
 - TAB + PlaceholderAPI (Player expansion): view-only player info for everyone
   — tab list shows `❤ health Lv xp | (x, y, z) | ping ms` per player, and a
   bare 5-segment health bar (20% per segment) floats above each head in
@@ -85,6 +86,57 @@ make plugins-sync-dry-run   # resolve versions, print plan
 make plugins-sync           # download jars into data/minecraft/plugins
 make plugins-list           # offline manifest + installed jars
 ```
+
+### Geyser bundle updates on EC2
+
+The installed Go CLI supports a bounded updater for Geyser-Spigot, ViaVersion,
+and ViaBackwards. It resolves official Geyser builds plus a matching Via release
+pair for the live Paper game version. When the server cannot be queried during
+checking/staging, it uses the configured Minecraft version and warns; applying
+always requires the live Paper version to match the staged bundle.
+
+```bash
+sudo nethernode plugins check geyser
+sudo nethernode plugins update geyser
+sudo nethernode --dry-run plugins update geyser --apply
+sudo nethernode plugins update geyser --apply
+sudo nethernode plugins rollback geyser --apply
+```
+
+`check` queries official metadata, reads installed JARs, and uses Docker/RCON
+to identify the live Paper version when available. `update` downloads and
+verifies the three artifacts, records the installed JAR baseline, and stages
+them without changing the running server. `--apply` consumes that exact staged
+bundle without network access. It refuses changed JARs, duplicate or missing
+plugins, a stopped server, unknown/disabled plugin state, version mismatches,
+or connected players. Global `--dry-run` performs no network, Docker, RCON, or
+filesystem writes; it does not resolve live versions.
+
+Apply acquires the same Linux lock used by plugin sync, confirms successful
+save/flush and autosave pause, creates and fully verifies a uniquely named full
+backup, restores autosave, then rechecks players and JARs. It stops and starts
+the existing Minecraft container without image pulls or recreation. Only the
+three selected JARs and their managed-state rows change. Geyser/Floodgate
+configs, Floodgate keys, worlds, other plugins, and existing backup archives
+are preserved. Successful plugin-update backups remain available for manual
+recovery and are not pruned automatically by this command.
+
+Startup checks require RCON readiness, enabled trio entries, expected plugin
+versions, the selected Geyser build, and reported Bedrock `26.52` support. A
+failed activation triggers JAR rollback and another health check. Rollback
+does not restore the world or revert plugin config migrations; the full backup
+is retained for operator recovery. Verify both Java and actual Bedrock `26.52`
+logins after activation; version/status output cannot prove player login.
+
+Updater state defaults to a private sibling of the Minecraft data directory,
+`/opt/nethernode/data/.nethernode-plugin-updates` on EC2. Override with
+`NETHERNODE_PLUGIN_UPDATE_DIR` outside Minecraft data and backups. Keep the
+`staged` and `rollback` directories private. An interrupted transaction retains
+`.rollback-pending` for operator recovery and blocks later applies; inspect
+that transaction before attempting another update. Install the new Go CLI on
+the chosen EC2 host before using these commands; the legacy shell fallback
+does not implement them. These commands do not add a scheduler or Minecraft
+console command.
 
 Geyser config template (`server/config/geyser/config.yml`) is installed only
 when missing: `bedrock 0.0.0.0:19132`, `remote 127.0.0.1:25565`,
@@ -97,10 +149,16 @@ Compatibility notes:
   (see https://geysermc.org/wiki/geyser/using-geyser-with-consoles/).
 - Via plugins do not promise every historical/future version; Mojang protocol
   changes can require plugin updates.
-- As of 2026-07-06 Geyser/Floodgate publish support up to MC `26.1.x`; Bedrock
-  join on `26.2` works once Geyser ships `26.2` support (re-run
-  `make plugins-sync`). ViaVersion/ViaBackwards already resolve `26.2`
-  (snapshot builds).
+- Checked 2026-10-15: Geyser's [official supported-versions page](https://geysermc.org/wiki/geyser/supported-versions/)
+  lists Bedrock `26.30` through `26.52`. These are client versions, not Geyser
+  release numbers. Older Paper versions need compatible ViaVersion protocol
+  translation; upstream support can change independently of the installed JARs.
+  Use `nethernode plugins check geyser`, then stage with
+  `nethernode plugins update geyser`; apply the verified bundle during an
+  empty-server maintenance window. The updater selects a matching Via release
+  pair for the live Paper version and checks reported Bedrock `26.52` support
+  after activation. Confirm actual Java and Bedrock logins before declaring
+  crossplay healthy.
 
 ### Offline-Mode Skins
 

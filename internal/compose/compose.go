@@ -96,6 +96,16 @@ func (r *Runner) Down(ctx context.Context) (string, error) {
 	return r.runCompose(ctx, "down")
 }
 
+// StopMinecraft stops the existing service without removing its container.
+func (r *Runner) StopMinecraft(ctx context.Context) (string, error) {
+	return r.runCompose(ctx, "stop", "--timeout", "120", "minecraft")
+}
+
+// StartMinecraft starts that same container without pulling or recreating it.
+func (r *Runner) StartMinecraft(ctx context.Context) (string, error) {
+	return r.runCompose(ctx, "start", "minecraft")
+}
+
 // PS runs `docker compose ps`.
 func (r *Runner) PS(ctx context.Context) (string, error) {
 	return r.runCompose(ctx, "ps")
@@ -118,6 +128,18 @@ func (r *Runner) ContainerRunning(ctx context.Context, name string) (bool, error
 		return false, fmt.Errorf("parse docker inspect output %q: %w", strings.TrimSpace(out), perr)
 	}
 	return running, nil
+}
+
+// MinecraftDataMount returns the host source bound to the container's /data.
+func (r *Runner) MinecraftDataMount(ctx context.Context, name string) (string, error) {
+	if r.DryRun {
+		return "", nil
+	}
+	out, err := r.exec(ctx, "docker", "inspect", "-f", `{{range .Mounts}}{{if eq .Destination "/data"}}{{.Source}}{{end}}{{end}}`, name)
+	if err != nil {
+		return "", fmt.Errorf("docker inspect data mount %s: %w", name, err)
+	}
+	return strings.TrimSpace(out), nil
 }
 
 // ContainerCommand executes a command inside an already-running container.

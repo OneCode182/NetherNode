@@ -144,6 +144,33 @@ if [[ "${MODE}" == "list" ]]; then
   exit 0
 fi
 
+acquire_plugin_update_lock() {
+  local lock_file="${PLUGINS_DIR}/.nethernode-plugin-update.lock"
+
+  if ! command -v flock >/dev/null 2>&1; then
+    echo "Required tool missing: flock (needed to serialize plugin updates)" >&2
+    return 1
+  fi
+  if ! mkdir -p "${PLUGINS_DIR}"; then
+    echo "Could not create plugins dir for update lock: ${PLUGINS_DIR}" >&2
+    return 1
+  fi
+  if ! exec {PLUGIN_UPDATE_LOCK_FD}>"${lock_file}"; then
+    echo "Could not open plugin update lock: ${lock_file}" >&2
+    return 1
+  fi
+
+  trap 'exec {PLUGIN_UPDATE_LOCK_FD}>&-' EXIT
+  if ! flock -n "${PLUGIN_UPDATE_LOCK_FD}"; then
+    echo "Could not acquire plugin update lock (another update may be running): ${lock_file}" >&2
+    return 1
+  fi
+}
+
+if [[ "${DRY_RUN}" != "true" ]]; then
+  acquire_plugin_update_lock || exit 1
+fi
+
 for tool in curl python3; do
   if ! command -v "${tool}" >/dev/null 2>&1; then
     echo "Required tool missing: ${tool}" >&2

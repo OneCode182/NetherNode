@@ -186,6 +186,122 @@ func TestRunCreatesReadableArchive(t *testing.T) {
 	}
 }
 
+func TestCreatePreservesExistingArchives(t *testing.T) {
+	tmp := t.TempDir()
+	sourceDir := filepath.Join(tmp, "source")
+	destDir := filepath.Join(tmp, "dest")
+	writeFixtureTree(t, sourceDir)
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		t.Fatalf("mkdir dest: %v", err)
+	}
+
+	base := time.Date(2026, 7, 6, 12, 30, 45, 0, time.UTC)
+	oldArchives := map[string]string{
+		filepath.Join(destDir, "minecraft-20260706T103045Z.tar.gz"): "older archive one",
+		filepath.Join(destDir, "minecraft-20260706T113045Z.tar.gz"): "older archive two",
+	}
+	for path, content := range oldArchives {
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatalf("write old archive %s: %v", path, err)
+		}
+		oldTime := base.Add(-time.Hour)
+		if err := os.Chtimes(path, oldTime, oldTime); err != nil {
+			t.Fatalf("set old archive time %s: %v", path, err)
+		}
+	}
+
+	result, err := Create(Options{
+		SourceDir: sourceDir,
+		DestDir:   destDir,
+		Label:     "minecraft",
+		Retention: 1,
+	}, base)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if len(result.Removed) != 0 {
+		t.Fatalf("Create removed existing archives: %v", result.Removed)
+	}
+
+	for path, wantContent := range oldArchives {
+		gotContent, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("existing archive missing: %s: %v", path, err)
+		}
+		if string(gotContent) != wantContent {
+			t.Fatalf("existing archive %s changed to %q, want %q", path, gotContent, wantContent)
+		}
+	}
+	if _, err := os.Stat(result.ArchivePath); err != nil {
+		t.Fatalf("new archive missing: %v", err)
+	}
+}
+
+func TestVerifyArchiveAcceptsValidArchive(t *testing.T) {
+	tmp := t.TempDir()
+	sourceDir := filepath.Join(tmp, "source")
+	want := writeFixtureTree(t, sourceDir)
+
+	result, err := Create(Options{
+		SourceDir: sourceDir,
+		DestDir:   filepath.Join(tmp, "dest"),
+		Label:     "minecraft",
+	}, time.Date(2026, 7, 6, 12, 30, 45, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if got := readArchive(t, result.ArchivePath); len(got) != len(want) {
+		t.Fatalf("archive entries = %d, want %d", len(got), len(want))
+	}
+	if err := VerifyArchive(result.ArchivePath); err != nil {
+		t.Fatalf("VerifyArchive(valid archive): %v", err)
+	}
+}
+
+func TestVerifyArchiveRejectsCorruptOrTruncatedArchive(t *testing.T) {
+	tmp := t.TempDir()
+	sourceDir := filepath.Join(tmp, "source")
+	writeFixtureTree(t, sourceDir)
+	result, err := Create(Options{
+		SourceDir: sourceDir,
+		DestDir:   filepath.Join(tmp, "dest"),
+		Label:     "minecraft",
+	}, time.Date(2026, 7, 6, 12, 30, 45, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	archive, err := os.ReadFile(result.ArchivePath)
+	if err != nil {
+		t.Fatalf("read archive: %v", err)
+	}
+	if len(archive) < 8 {
+		t.Fatalf("archive too small to contain gzip trailer: %d bytes", len(archive))
+	}
+
+	corrupted := append([]byte(nil), archive...)
+	corrupted[len(corrupted)-8] ^= 0xff // Damage gzip CRC stored in trailer.
+	cases := []struct {
+		name string
+		data []byte
+	}{
+		{name: "corrupt gzip trailer", data: corrupted},
+		{name: "truncate gzip trailer", data: archive[:len(archive)-1]},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(tmp, tc.name+".tar.gz")
+			if err := os.WriteFile(path, tc.data, 0o644); err != nil {
+				t.Fatalf("write invalid archive: %v", err)
+			}
+			if err := VerifyArchive(path); err == nil {
+				t.Fatalf("VerifyArchive(%s) succeeded, want error", tc.name)
+			}
+		})
+	}
+}
+
 func TestRunPrunesOldBackups(t *testing.T) {
 	tmp := t.TempDir()
 	sourceDir := filepath.Join(tmp, "source")

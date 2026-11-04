@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 )
 
@@ -183,6 +184,86 @@ func TestLoadConfigFromRoot_ResolvesPathsAndDotenv(t *testing.T) {
 	}
 }
 
+func TestLoadConfigFromRoot_MinecraftVersionResolution(t *testing.T) {
+	root := "/srv/nethernode/app"
+	runtimeEnvPath := filepath.Join(root, "server", "runtime.env")
+	cases := []struct {
+		name            string
+		processVersion  string
+		dotenv          string
+		runtimeEnv      string
+		runtimeFileGone bool
+		want            string
+		wantRuntimeRead bool
+	}{
+		{
+			name:           "process env wins",
+			processVersion: "1.22.1",
+			dotenv:         "MINECRAFT_VERSION=1.21.8\n",
+			runtimeEnv:     "MINECRAFT_VERSION=1.20.4\n",
+			want:           "1.22.1",
+		},
+		{
+			name:       "dotenv wins over runtime env",
+			dotenv:     "MINECRAFT_VERSION='1.21.8'\n",
+			runtimeEnv: "MINECRAFT_VERSION=1.20.4\n",
+			want:       "1.21.8",
+		},
+		{
+			name:            "runtime env fallback uses root path",
+			runtimeEnv:      "# runtime version\nMINECRAFT_VERSION=\"1.20.4\"\n",
+			want:            "1.20.4",
+			wantRuntimeRead: true,
+		},
+		{
+			name:            "missing version stays empty",
+			runtimeFileGone: true,
+			wantRuntimeRead: true,
+		},
+		{
+			name:            "runtime env without version stays empty",
+			runtimeEnv:      "OTHER_SETTING=value\n",
+			wantRuntimeRead: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := map[string]string{}
+			if tc.processVersion != "" {
+				env["MINECRAFT_VERSION"] = tc.processVersion
+			}
+			getenv := func(key string) string { return env[key] }
+			var runtimeReadPath string
+			readFile := func(path string) ([]byte, error) {
+				switch path {
+				case filepath.Join(root, ".env"):
+					return []byte(tc.dotenv), nil
+				case runtimeEnvPath:
+					runtimeReadPath = path
+					if tc.runtimeFileGone {
+						return nil, errors.New("not found")
+					}
+					return []byte(tc.runtimeEnv), nil
+				default:
+					return nil, errors.New("unexpected path: " + path)
+				}
+			}
+
+			cfg := LoadConfigFromRoot(root, getenv, readFile)
+			if cfg.MinecraftVersion != tc.want {
+				t.Fatalf("MinecraftVersion = %q, want %q", cfg.MinecraftVersion, tc.want)
+			}
+			if tc.wantRuntimeRead && runtimeReadPath != runtimeEnvPath {
+				t.Fatalf("runtime env read path = %q, want %q", runtimeReadPath, runtimeEnvPath)
+			}
+			if !tc.wantRuntimeRead && runtimeReadPath != "" {
+				t.Fatalf("runtime env unexpectedly read from %q", runtimeReadPath)
+			}
+		})
+	}
+}
+
 func TestResolveRoot(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -235,6 +316,9 @@ func TestLoadConfigFrom_CustomEnvFilePath(t *testing.T) {
 	}
 	var readPath string
 	readFile := func(name string) ([]byte, error) {
+		if name != "custom.env" {
+			return nil, errors.New("unexpected path: " + name)
+		}
 		readPath = name
 		return []byte("MINECRAFT_RCON_PASSWORD=custom-path-secret\n"), nil
 	}
