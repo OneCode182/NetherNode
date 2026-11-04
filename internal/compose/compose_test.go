@@ -204,6 +204,17 @@ func TestRunner_DefaultExec(t *testing.T) {
 	}
 }
 
+func TestDefaultExecSeparatesDiagnostics(t *testing.T) {
+	out, err := defaultExec(context.Background(), "sh", "-c", "printf true; printf 'podman warning' >&2")
+	if err != nil || out != "true" {
+		t.Fatalf("defaultExec() = %q, %v; want stdout only", out, err)
+	}
+	out, err = defaultExec(context.Background(), "sh", "-c", "printf 'failed' >&2; exit 1")
+	if err == nil || out != "failed" {
+		t.Fatalf("defaultExec() = %q, %v; want failure diagnostics", out, err)
+	}
+}
+
 func assertSingleCall(t *testing.T, rec *recorder, wantName string, wantArgs []string) {
 	t.Helper()
 	if len(rec.calls) != 1 {

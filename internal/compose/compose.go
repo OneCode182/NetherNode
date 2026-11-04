@@ -29,13 +29,16 @@ type Runner struct {
 	Exec ExecFunc
 }
 
-// defaultExec runs name/args via os/exec, capturing combined output.
+// defaultExec keeps successful stdout separate from diagnostic stderr.
 func defaultExec(ctx context.Context, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
-	var out bytes.Buffer
+	var out, stderr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stderr = &stderr
 	err := cmd.Run()
+	if err != nil {
+		return out.String() + stderr.String(), err
+	}
 	return out.String(), err
 }
 
